@@ -9,8 +9,9 @@ import socket
 import threading
  
 import sys # sysのインポートが必要です
+import webbrowser
 
-VERSION = "0.2"
+VERSION = "0.3"
 
 
 
@@ -49,11 +50,6 @@ def resource_path(relative_path):
 
 from pypjlink import Projector
 from PIL import Image, ImageDraw
-
-# --- 設定ファイル ---
-CONFIG_FILE = "projectors.json"
-PRESETS_FILE = "presets.json"
-SETTINGS_FILE = "settings.json"
 
 # GUIのテーマ設定 (デフォルトをライトモードに変更)
 ctk.set_appearance_mode("Light")
@@ -111,6 +107,24 @@ class RenameDialog(ctk.CTkToplevel):
         self.result = self.entry.get()
         self.destroy()
 
+
+class SpacerCard(ctk.CTkFrame):
+    """グリッドに空白を作るためのダミーカード"""
+    def __init__(self, master, delete_cb=None):
+        super().__init__(master, fg_color="transparent", border_width=0)
+        self.ip = "spacer" 
+        self.name = "（空白）"
+        self.delete_cb = delete_cb
+        
+        # サイズだけ確保
+        self.configure(width=120, height=120) 
+        
+        # 右クリックで削除できるように
+        self.menu = tk.Menu(self, tearoff=0)
+        self.menu.add_command(label="❌ この空白を削除", command=lambda: self.delete_cb(self))
+        self.bind("<ButtonRelease-3>", lambda e: self.menu.tk_popup(e.x_root, e.y_root))
+
+
 class ProjectorCard(ctk.CTkFrame):
     """プロジェクター1台分の操作パネル"""
     def __init__(self, master, ip, name, icons, password=None, rename_cb=None, delete_cb=None):
@@ -145,9 +159,13 @@ class ProjectorCard(ctk.CTkFrame):
 
         # --- 1. 管理メニュー (アイコン右クリック用) ---
         self.context_menu = tk.Menu(self, tearoff=0, font=("Arial", 14))
+        self.context_menu.add_command(label="🌐 Web Access", command=self.open_web_control)
+        self.context_menu.add_separator()
+        
         self.context_menu.add_command(label="⚡ Power ON", command=lambda: self.control_power("Power ON"))
         self.context_menu.add_command(label="💤 Power OFF", command=lambda: self.control_power("Power OFF"))
         self.context_menu.add_separator()
+        
         self.context_menu.add_command(label="✏️ 名前の変更", command=self.rename_device)
         self.context_menu.add_command(label="❌ 削除", command=self.delete_device)
 
@@ -173,6 +191,12 @@ class ProjectorCard(ctk.CTkFrame):
     def show_context_menu(self, event):
         """電源・管理メニューを表示"""
         self.context_menu.tk_popup(event.x_root, event.y_root)
+        
+    def open_web_control(self):
+        """デフォルトブラウザでプロジェクターのWeb設定画面を開く"""
+        url = f"http://{self.ip}"
+        print(f"🔗 Opening Web Control: {url}")
+        webbrowser.open(url)
 
     def show_input_menu(self, event):
         """入力切替メニューを表示"""
@@ -257,6 +281,86 @@ class ProjectorCard(ctk.CTkFrame):
     def control_power(self, choice):
         self.set_power_state("on" if choice == "Power ON" else "off")
 
+
+class ManualSortDialog(ctk.CTkToplevel):
+    def __init__(self, parent, cards):
+        super().__init__(parent)
+        self.title("手動並び替え・空白挿入")
+        # self.geometry("450x600")
+        
+        
+        parent.update_idletasks() # 親のサイズを確定させる
+        dialog_w = 450
+        dialog_h = 600
+        pos_x = parent.winfo_rootx() + (parent.winfo_width() // 2) - (dialog_w // 2)
+        pos_y = parent.winfo_rooty() + (parent.winfo_height() // 2) - (dialog_h // 2)
+        self.geometry(f"{dialog_w}x{dialog_h}+{pos_x}+{pos_y}")
+        
+        
+        # ウインドウを最前面に持ってくる
+        self.after(100, self.lift)
+        self.after(100, self.focus_force)
+        
+        self.temp_list = list(cards)
+        self.applied = False
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+
+        ctk.CTkLabel(self, text="ボタンで順序を入れ替えてください。", font=("Arial", 11)).grid(row=0, column=0, pady=5)
+
+        self.scroll_frame = ctk.CTkScrollableFrame(self)
+        self.scroll_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
+        
+        self.btn_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.btn_frame.grid(row=2, column=0, pady=10)
+        
+        ctk.CTkButton(self.btn_frame, text="＋ 空白を挿入", fg_color="#2E7D32", command=self.add_spacer).pack(side="left", padx=5)
+        ctk.CTkButton(self.btn_frame, text="キャンセル", fg_color="gray", command=self.destroy).pack(side="left", padx=5)
+        ctk.CTkButton(self.btn_frame, text="適用して保存", command=self.apply).pack(side="left", padx=5)
+
+        self.refresh_list()
+        self.grab_set() # 他の操作を無効化
+
+    def refresh_list(self):
+        for child in self.scroll_frame.winfo_children():
+            child.destroy()
+        
+        for i, card in enumerate(self.temp_list):
+            item_f = ctk.CTkFrame(self.scroll_frame)
+            item_f.pack(fill="x", pady=2, padx=5)
+            
+            label_text = f"{i+1}: {card.name}"
+            if card.ip != "spacer": label_text += f" ({card.ip})"
+            
+            ctk.CTkLabel(item_f, text=label_text, anchor="w").pack(side="left", padx=10, fill="x", expand=True)
+            
+            # 操作ボタン
+            ctk.CTkButton(item_f, text="↑", width=30, command=lambda idx=i: self.move(-1, idx)).pack(side="left", padx=2)
+            ctk.CTkButton(item_f, text="↓", width=30, command=lambda idx=i: self.move(1, idx)).pack(side="left", padx=2)
+            ctk.CTkButton(item_f, text="×", width=30, fg_color="#C62828", command=lambda idx=i: self.delete_item(idx)).pack(side="left", padx=2)
+
+    def move(self, direction, index):
+        new_index = index + direction
+        if 0 <= new_index < len(self.temp_list):
+            self.temp_list[index], self.temp_list[new_index] = self.temp_list[new_index], self.temp_list[index]
+            self.refresh_list()
+
+    def delete_item(self, index):
+        self.temp_list.pop(index)
+        self.refresh_list()
+
+    def add_spacer(self):
+        # 仮のSpacerオブジェクト（保存時に実体化させるのでここでは最小限）
+        new_spacer = type('obj', (object,), {'ip': 'spacer', 'name': '（空白）'})
+        self.temp_list.append(new_spacer)
+        self.refresh_list()
+
+    def apply(self):
+        self.applied = True
+        self.result_list = self.temp_list
+        self.destroy()
+
+
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -284,20 +388,28 @@ class App(ctk.CTk):
         # -----------------------------------
         # 1. サイドバー
         # -----------------------------------
+        # 0: 管理Label / 1: IP Entry / 2: btn_frame(追加/探査) / 3: 更新Button / 4: StatusLabel
+        # 5: 一括Label / 6: PowerLabel / 7: MuteON / 8: MuteOFF / 9: InputSelect
+        # 10: 整列Label / 11: SortMenu
+        # 12: 特別Label / 13: DataMenu / 14: ThemeMenu
+        
         self.sidebar = ctk.CTkFrame(self, width=110, corner_radius=0)
         self.sidebar.grid(row=0, column=0, rowspan=2, sticky="nsew")
-        self.sidebar.grid_rowconfigure(10, weight=1)
+        self.sidebar.grid_rowconfigure(15, weight=1)
 
         ctk.CTkLabel(self.sidebar, text="管理", font=("Arial", 14, "bold")).grid(row=0, column=0, padx=5, pady=(15, 5))
+        
         self.ip_entry = ctk.CTkEntry(self.sidebar, placeholder_text="IP")
         self.ip_entry.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+        
+        self.ip_entry.bind("<Return>", lambda event: self.add_manual_ip())
         
         btn_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         btn_frame.grid(row=2, column=0, padx=5, pady=5, sticky="ew")
         btn_frame.grid_columnconfigure((0,1), weight=1)
-        ctk.CTkButton(btn_frame, text="追加", command=self.add_manual_ip, width=40).grid(row=0, column=0, padx=(0,2))
+        ctk.CTkButton(btn_frame, text="追加", command=self.add_manual_ip, width=40).grid(row=2, column=0, padx=(0,2))
         self.scan_btn = ctk.CTkButton(btn_frame, text="探査", fg_color="#2E7D32", command=self.start_scan, width=40)
-        self.scan_btn.grid(row=0, column=1, padx=(2,0))
+        self.scan_btn.grid(row=2, column=1, padx=(2,0))
 
         self.refresh_all_btn = ctk.CTkButton(self.sidebar, text="🔄 更新", fg_color="#546E7A", command=self.refresh_all_status)
         self.refresh_all_btn.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
@@ -305,42 +417,49 @@ class App(ctk.CTk):
         self.status_label = ctk.CTkLabel(self.sidebar, text="待機中", text_color="gray", font=("Arial", 11))
         self.status_label.grid(row=4, column=0, padx=5, pady=0)
 
+        # 一括操作セクション
         ctk.CTkLabel(self.sidebar, text="一括", font=("Arial", 14, "bold")).grid(row=5, column=0, padx=5, pady=(20, 5))
 
-        # --- 1. 全台電源制御：ラベル ＋ ポップアップメニュー ---
         self.power_label = ctk.CTkLabel(self.sidebar, text="Power", 
                                         fg_color="#1f538d", corner_radius=6, height=35,
                                         font=("Arial", 13, "bold"), cursor="hand2")
         self.power_label.grid(row=6, column=0, padx=10, pady=5, sticky="ew")
         
-        # メニューの中身を作成
         self.all_power_menu = tk.Menu(self, tearoff=0, font=("Arial", 12))
         self.all_power_menu.add_command(label="⚡ ALL Power ON", command=lambda: self.control_all_power("Power ON"))
         self.all_power_menu.add_command(label="💤 ALL Power OFF", command=lambda: self.control_all_power("Power OFF"))
-        
-        # ラベルをクリックした時にメニューを出す設定
         self.power_label.bind("<ButtonRelease-1>", lambda e: self.all_power_menu.tk_popup(e.x_root, e.y_root))
 
-
-        # Mute ONボタンを「self.btn_mute_on」という名前で作成して配置
         self.btn_mute_on = ctk.CTkButton(self.sidebar, text="Mute ON", fg_color="#C62828")
         self.btn_mute_on.bind("<ButtonRelease-1>", lambda event: self.control_all_mute(True))
         self.btn_mute_on.grid(row=7, column=0, padx=10, pady=5, sticky="ew")
 
-        # Mute OFFボタンを「self.btn_mute_off」という名前で作成して配置
         self.btn_mute_off = ctk.CTkButton(self.sidebar, text="Mute OFF", fg_color="gray")
         self.btn_mute_off.bind("<ButtonRelease-1>", lambda event: self.control_all_mute(False))
         self.btn_mute_off.grid(row=8, column=0, padx=10, pady=5, sticky="ew")
 
+        self.all_input_menu = ctk.CTkOptionMenu(self.sidebar, 
+            values=["HDMI 1", "HDMI 2", "SDI (Digi 3)", "VGA (RGB 1)", "NETWORK"], 
+            command=self.control_all_input)
+        self.all_input_menu.set("Input Select")
+        self.all_input_menu.grid(row=9, column=0, padx=10, pady=5, sticky="ew")
 
+
+        # 整列セクション
+        ctk.CTkLabel(self.sidebar, text="整列", font=("Arial", 14, "bold")).grid(row=10, column=0, padx=5, pady=(15, 0))
+        self.sort_menu = ctk.CTkOptionMenu(self.sidebar, values=["IPアドレス順", "名前順", "手動設定..."], command=self.handle_sort_menu)
+        self.sort_menu.set("ソート")
+        self.sort_menu.grid(row=11, column=0, padx=10, pady=5, sticky="ew")
+
+        # データ・設定セクション
+        ctk.CTkLabel(self.sidebar, text="特別", font=("Arial", 14, "bold")).grid(row=12, column=0, padx=5, pady=(15, 0))
         self.manage_menu = ctk.CTkOptionMenu(self.sidebar, values=["手動で保存", "データ初期化"], command=self.handle_manage_menu)
         self.manage_menu.set("データ")
-        self.manage_menu.grid(row=11, column=0, padx=10, pady=(0, 5), sticky="ew")
+        self.manage_menu.grid(row=13, column=0, padx=10, pady=(0, 5), sticky="ew")
 
-
-        # テーマ切り替えメニュー (選択肢を2つに変更)
         self.theme_menu = ctk.CTkOptionMenu(self.sidebar, values=["ライトモード", "ダークモード"], command=self.change_theme)
-        self.theme_menu.grid(row=12, column=0, padx=10, pady=(0, 20), sticky="ew")
+        self.theme_menu.set("テーマ")
+        self.theme_menu.grid(row=14, column=0, padx=10, pady=(0, 20), sticky="ew")
 
         # -----------------------------------
         # 2. メインエリア
@@ -367,27 +486,19 @@ class App(ctk.CTk):
         self.presets_data = {} 
 
         for i in range(1, 11):
-            # 1-5は1行目、6-10は2行目に配置
             row_idx = (i - 1) // 5 + 1
             col_idx = (i - 1) % 5
-            
-            btn = ctk.CTkButton(self.preset_frame, text=f"Preset {i}", height=35, fg_color="transparent", border_width=1, 
-                                command=lambda num=i: self.execute_preset(num))
-            btn.grid(row=row_idx, column=col_idx, padx=5, pady=2, sticky="ew")
             
             p_menu = tk.Menu(self, tearoff=0, font=("Arial", 14))
             p_menu.add_command(label="✏️ 名前の変更", command=lambda num=i: self.rename_preset(num))
             p_menu.add_command(label="❌ 登録を解除", command=lambda num=i: self.clear_preset(num))
             
-            # command=... を消して、すべて bind に集約します
+            # ボタン作成は1回だけ！
             btn = ctk.CTkButton(self.preset_frame, text=f"Preset {i}", height=35, fg_color="transparent", border_width=1)
             btn.grid(row=row_idx, column=col_idx, padx=5, pady=2, sticky="ew")
             
-            # 左クリック（離して実行）
             btn.bind("<ButtonRelease-1>", lambda event, num=i: self.execute_preset(num))
-            # Shift+左クリック（離して登録・上書き）
             btn.bind("<Shift-ButtonRelease-1>", lambda event, num=i: self.save_preset(num))
-            # 右クリック（離してメニュー表示）
             btn.bind("<ButtonRelease-3>", lambda e, menu=p_menu: menu.tk_popup(e.x_root, e.y_root))
             
             self.preset_buttons[str(i)] = btn
@@ -440,6 +551,25 @@ class App(ctk.CTk):
         
         # 選択後に表示をリセット
         self.all_input_menu.set("Input Select")
+        
+    def handle_sort_menu(self, choice):
+        if not self.projector_cards: return
+
+        if choice == "IPアドレス順":
+            # 空白(spacer)は一番後ろ[999...]に、それ以外はIPの数値順に
+            self.projector_cards.sort(key=lambda x: [int(part) for part in x.ip.split('.') if part.isdigit()] if x.ip != "spacer" else [999, 999, 999, 999])
+            self.rearrange_grid()
+            self.save_devices()
+        elif choice == "名前順":
+            # 空白は一番後ろ("zzz")に、それ以外は名前順に
+            self.projector_cards.sort(key=lambda x: x.name.lower() if x.ip != "spacer" else "zzzzzz")
+            self.rearrange_grid()
+            self.save_devices()
+        elif choice == "手動設定...":
+            # ここでエラーが起きるのを防ぐため、確実に呼び出す
+            self.open_manual_sort_dialog()
+        
+        self.sort_menu.set("ソート")
 
     # --- テーマ設定の保存と読み込み ---
     def load_settings(self):
@@ -449,16 +579,13 @@ class App(ctk.CTk):
                 with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
                     s = json.load(f)
                     theme = s.get("theme", "ライトモード")
-                    
-                    # ▼ 修正：ジオメトリ文字列をそのまま復元する
-                    # これによりスケーリングによる「サイズの肥大化」を防ぎます
                     geo = s.get("geometry")
-                    if geo:
-                        self.geometry(geo)
+                    if geo: self.geometry(geo)
             except: pass
         
-        self.theme_menu.set(theme)
+        # ▼ ここを修正：読み込んだテーマを適用するが、表示は「テーマ」に固定する
         self.change_theme(theme, save=False)
+        self.theme_menu.set("テーマ")
 
     def save_current_settings(self, theme_choice=None):
         """現在のテーマとウィンドウのジオメトリを保存する"""
@@ -482,8 +609,12 @@ class App(ctk.CTk):
             ctk.set_appearance_mode("Dark")
         else:
             ctk.set_appearance_mode("Light")
+        
         if save:
             self.save_current_settings(choice)
+            
+        # ▼ これを追加：選択が終わったら表示をリセット
+        self.theme_menu.set("テーマ")
 
     # --- 以下、ロジック変更なし ---
     def rename_preset(self, num):
@@ -594,10 +725,20 @@ class App(ctk.CTk):
             json.dump(self.presets_data, f, ensure_ascii=False, indent=4)
 
     def rearrange_grid(self):
-        # ▼ 変更点: 4ではなく、自動計算された列数で並べ替える
-        for i, card in enumerate(self.projector_cards):
+        # 1. 配置を一旦クリア
+        for card in self.projector_cards:
             card.grid_forget()
-            card.grid(row=i // self.current_columns, column=i % self.current_columns, padx=8, pady=8, sticky="nsew")
+        
+        # 2. 新しい列数で再配置
+        for i, card in enumerate(self.projector_cards):
+            card.grid(row=i // self.current_columns, 
+                      column=i % self.current_columns, 
+                      padx=8, pady=8, sticky="nsew")
+        
+        # 3. ★スクロールエリアの強制更新（これが重要）
+        self.scroll_frame.update_idletasks()
+        # 内部フレームのサイズを再計算させる「おまじない」
+        self.scroll_frame._parent_canvas.configure(scrollregion=self.scroll_frame._parent_canvas.bbox("all"))
             
     # --- 自動リサイズ処理 ---
     def on_frame_resize(self, event):
@@ -625,24 +766,21 @@ class App(ctk.CTk):
             self.status_label.configure(text="保存完了")
             
         elif choice == "データ初期化":
-            # 1. ユーザーに最終確認
-            if messagebox.askyesno("警告", "すべてのプロジェクターとプリセットを消去します。\n本当によろしいですか？"):
-                
-                # 2. 画面からプロジェクターのカードをすべて消去
+            # parent=selfを追加することで、メインウインドウの中央に出るようになります
+            if messagebox.askyesno("警告", "すべてのプロジェクターとプリセットを消去します。\n本当によろしいですか？", parent=self):
                 for card in self.projector_cards:
                     card.destroy()
                 self.projector_cards.clear()
                 self.registered_ips.clear()
                 
-                # 3. プリセットデータを空にして、ボタンの見た目をリセット
                 self.presets_data.clear()
                 for i in range(1, 11):
-                    self._update_preset_button_ui(str(i), False)
+                    # ▼ ここを修正：False を消して引数を1つにする
+                    self._update_preset_button_ui(str(i))
                 
-                # 4. 保存されているJSONファイルを削除
                 if os.path.exists(CONFIG_FILE): os.remove(CONFIG_FILE)
                 if os.path.exists(PRESETS_FILE): os.remove(PRESETS_FILE)
-                
+                self.rearrange_grid() # 画面を真っさらに
                 self.status_label.configure(text="初期化しました")
 
         # 5. メニューの表示を「データ」に戻す
@@ -670,7 +808,11 @@ class App(ctk.CTk):
         elif event.keysym == 'Down': self.control_all_mute(True)
 
     def refresh_all_status(self):
-        for card in self.projector_cards: threading.Thread(target=card.fetch_status, daemon=True).start()
+        for card in self.projector_cards:
+            # ▼ ここが重要：IPが "spacer" ではない（実機）ときだけ通信する
+            if hasattr(card, "ip") and card.ip != "spacer":
+                threading.Thread(target=card.fetch_status, daemon=True).start()
+        
         self.after(3000, lambda: self.status_label.configure(text="更新完了"))
 
     def add_projector(self, ip, name, save=True):
@@ -689,29 +831,84 @@ class App(ctk.CTk):
         if os.path.exists(CONFIG_FILE):
             try:
                 with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                    for dev in json.load(f): self.add_projector(dev["ip"], dev["name"], save=False)
+                    data = json.load(f)
+                    for dev in data:
+                        if dev["ip"] == "spacer":
+                            # 直接リストに追加
+                            card = SpacerCard(self.scroll_frame, delete_cb=self.remove_projector)
+                            self.projector_cards.append(card)
+                        else:
+                            self.add_projector(dev["ip"], dev["name"], save=False)
+                # 全て読み込んだ後に再配置を呼ぶ
+                self.rearrange_grid()
             except: pass
 
     def save_devices(self):
-        devices = [{"ip": c.ip, "name": c.name} for c in self.projector_cards]
-        with open(CONFIG_FILE, "w", encoding="utf-8") as f: json.dump(devices, f, ensure_ascii=False, indent=4)
+        # SpacerCardかProjectorCardかを判定して保存
+        devices = []
+        for c in self.projector_cards:
+            devices.append({"ip": c.ip, "name": c.name})
+            
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(devices, f, ensure_ascii=False, indent=4)
 
     def add_manual_ip(self):
         ip = self.ip_entry.get().strip()
-        if ip: 
+        
+        # 1. 空文字チェック
+        if not ip:
+            return
+
+        # 2. IPアドレスの形式チェック（簡易版）
+        # 各数字が0-255の間で、4つの塊があるか確認
+        parts = ip.split('.')
+        if len(parts) != 4 or not all(p.isdigit() and 0 <= int(p) <= 255 for p in parts):
+            messagebox.showerror("入力エラー", f"'{ip}' は正しいIPアドレスの形式ではありません。\n(例: 192.168.0.10)", parent=self)
+            return
+
+        # 3. 重複チェック
+        if ip in self.registered_ips:
+            messagebox.showwarning("重複", f"IP: {ip} はすでに登録されています。", parent=self)
             self.ip_entry.delete(0, 'end')
-            threading.Thread(target=self._fetch_name_and_add, args=(ip,), daemon=True).start()
-            
-        # ▼ 追加：処理の後にフォーカスをメイン画面（self）に逃がす
+            return
+
+        # チェックを通過したら処理開始
+        self.ip_entry.delete(0, 'end')
+        self.status_label.configure(text="接続確認中...")
+        
+        # 名前取得のスレッドを開始
+        threading.Thread(target=self._fetch_name_and_add, args=(ip,), daemon=True).start()
+        
+        # フォーカスをメイン画面に戻す
         self.focus_set()
 
     def _fetch_name_and_add(self, ip):
         name = "不明"
+        is_success = False
         try:
-            pj = Projector.from_address(ip); pj.authenticate(None)
+            # タイムアウトを少し短め（2秒）にして、ユーザーを待たせすぎないようにします
+            pj = Projector.from_address(ip, timeout=2.0)
+            pj.authenticate(None)
             name = pj.get_name() or "Projector"
-        except: name = "Manual Device"
-        self.after(0, self.add_projector, ip, name)
+            is_success = True
+        except Exception:
+            name = "Manual Device"
+            is_success = False
+
+        # 直接 add_projector を呼ぶのではなく、成功・失敗の結果を持ってUI更新へ
+        self.after(0, lambda: self._handle_add_result(ip, name, is_success))
+
+    def _handle_add_result(self, ip, name, is_success):
+        """通信結果を受けて、カードの追加とステータスバーの表示を行う"""
+        self.add_projector(ip, name)
+        
+        if is_success:
+            self.status_label.configure(text=f"'{name}' を追加しました", text_color="gray")
+        else:
+            # 応答がなかった場合はオレンジ色などで警告っぽく表示
+            self.status_label.configure(text="応答なし: 手動追加しました", text_color="#E64A19")
+            # 3秒後に文字色を標準（gray）に戻す
+            self.after(3000, lambda: self.status_label.configure(text_color="gray"))
 
     def start_scan(self):
         self.scan_btn.configure(state="disabled"); self.status_label.configure(text="探査中...") 
@@ -732,23 +929,49 @@ class App(ctk.CTk):
     def _finish_scan(self, found):
         self.scan_btn.configure(state="normal"); self.status_label.configure(text=f"{len(found)}台発見")
         for ip in found: threading.Thread(target=self._fetch_name_and_add, args=(ip,), daemon=True).start()
+        
+    def open_manual_sort_dialog(self):
+        dialog = ManualSortDialog(self, self.projector_cards)
+        self.wait_window(dialog)
+        
+        if dialog.applied:
+            new_cards = []
+            # 現在画面にある全てのカード（Spacer含む）を一旦把握
+            current_all_cards = self.projector_cards[:]
+            
+            for item in dialog.result_list:
+                # 既存のカード（実体があるもの）
+                if hasattr(item, 'winfo_id') and item.winfo_exists():
+                    new_cards.append(item)
+                    if item in current_all_cards:
+                        current_all_cards.remove(item)
+                else:
+                    # 新しく追加された空白ダミーオブジェクトなら実体化
+                    new_cards.append(SpacerCard(self.scroll_frame, delete_cb=self.remove_projector))
+            
+            # リストから漏れた（＝ダイアログで×を押された）カードを破壊してメモリから消す
+            for old_card in current_all_cards:
+                old_card.destroy()
+            
+            self.projector_cards = new_cards
+            self.registered_ips = [c.ip for c in self.projector_cards if c.ip != "spacer"]
+            
+            self.rearrange_grid()
+            self.save_devices()
+            self.status_label.configure(text="並び替えを適用しました")
 
     def control_all_power(self, command):
-        """全台電源制御：ラベルの色をステータスとして使う"""
         if command == "Power ON":
             self.power_label.configure(fg_color="#28a745", text="⚡ Power: ON")
         else:
             self.power_label.configure(fg_color="#dc3545", text="💤 Power: OFF")
 
         for card in self.projector_cards:
-            # if card.is_targeted.get(): ← これを削除！
-            card.control_power(command)
-
+            # 空白カードはスキップ
+            if card.ip != "spacer":
+                card.control_power(command)
 
     def control_all_mute(self, is_mute):
-        """全台のミュート制御と、サイドバーボタンの見た目を更新"""
-        
-        # --- 1. サイドバーボタンの色を更新（視覚フィードバック） ---
         if is_mute:
             self.btn_mute_on.configure(fg_color="#FF0000") 
             self.btn_mute_off.configure(fg_color="#444444") 
@@ -756,11 +979,10 @@ class App(ctk.CTk):
             self.btn_mute_on.configure(fg_color="#631414") 
             self.btn_mute_off.configure(fg_color="gray")
 
-        # --- 2. 実際のプロジェクターへの命令 ---
         for card in self.projector_cards:
-            # チェックボックスに関係なく全台に命令！
-            # さらに、子カードの正しい関数名「set_mute_state」を呼び出す
-            card.set_mute_state(is_mute)
+            # 空白カードはスキップ
+            if card.ip != "spacer":
+                card.set_mute_state(is_mute)
 
 
     def start_remote_listeners(self):
