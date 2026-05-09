@@ -7,10 +7,8 @@ Projectores Controller via PJLink
 <img src="https://github.com/iturbog/PJLinChan/blob/main/SS.png" width="240px">
 
 ### Features
-うまく書けない
-
 ### Requirement
-[requirements](https://github.com/iturbog/PJLinChan/requirements.txt)
+[requirements](https://github.com/iturbog/PJLinChan/blob/main/requirements.txt)
 
 ### Installation
 ### Usage
@@ -32,8 +30,8 @@ Projectores Controller via PJLink
 ## v0.5<br>
 - サイドパネルの有効・無効切り替え
 - 手動入力欄
- - サブネットの自動入力
- - 連続入力
+  - サブネットの自動入力
+  - 連続入力
 - プロジェクタアイコン
   - Webアクセス（右クリックメニュー）
   - 並び替え
