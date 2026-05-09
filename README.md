@@ -4,10 +4,10 @@
 Projectores Controller via PJLink
 
 ### DEMO
-v0.2
+v0.2<br>
 <img src="https://github.com/iturbog/PJLinChan/blob/main/SS.png" width="240px">
 
-v0.5
+v0.5<br>
 
 ### Features
 ### Requirement
