@@ -11,7 +11,7 @@ import threading
 import sys # sysのインポートが必要です
 import webbrowser
 
-VERSION = "0.3"
+VERSION = "0.5"
 
 
 
@@ -388,78 +388,119 @@ class App(ctk.CTk):
         # -----------------------------------
         # 1. サイドバー
         # -----------------------------------
-        # 0: 管理Label / 1: IP Entry / 2: btn_frame(追加/探査) / 3: 更新Button / 4: StatusLabel
-        # 5: 一括Label / 6: PowerLabel / 7: MuteON / 8: MuteOFF / 9: InputSelect
-        # 10: 整列Label / 11: SortMenu
-        # 12: 特別Label / 13: DataMenu / 14: ThemeMenu
+        # 0: 管理Label / 1: 操作ロック / 2: IP Entry / 3: btn_frame(追加/探査) / 4: 更新Button / 5: StatusLabel
+        # 6: 一括Label / 7: PowerLabel / 8: MuteON / 9: MuteOFF / 10: InputSelect
+        # 11: 整列Label / 12: SortMenu
+        # 13: 特別Label / 14: DataMenu / 15: ThemeMenu
         
         self.sidebar = ctk.CTkFrame(self, width=110, corner_radius=0)
         self.sidebar.grid(row=0, column=0, rowspan=2, sticky="nsew")
-        self.sidebar.grid_rowconfigure(15, weight=1)
-
-        ctk.CTkLabel(self.sidebar, text="管理", font=("Arial", 14, "bold")).grid(row=0, column=0, padx=5, pady=(15, 5))
+        self.sidebar.grid_rowconfigure(13, weight=1)
+                
+        ctk.CTkLabel(self.sidebar, text="管理", font=("Arial", 14, "bold")).grid(row=0, column=0, padx=5, pady=(8, 2))
         
+        # ▼ 操作ロック用のスイッチを追加 (初期値はオフ=操作可能)
+        self.lock_switch = ctk.CTkSwitch(self.sidebar, text="操作ロック", command=self.toggle_manual_lock)
+        self.lock_switch.grid(row=1, column=0, padx=10, pady=2)
+                
+        # IP Entry（作成部分）
         self.ip_entry = ctk.CTkEntry(self.sidebar, placeholder_text="IP")
-        self.ip_entry.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
-        
+        self.ip_entry.grid(row=2, column=0, padx=10, pady=2, sticky="ew")
         self.ip_entry.bind("<Return>", lambda event: self.add_manual_ip())
+        # ▼ これを Entry 作成直後に配置してください
+        initial_prefix = self.get_local_prefix()
+        self.ip_entry.insert(0, initial_prefix)
+                
+        # ▼ Escキーで入力欄からフォーカスを外す
+        self.ip_entry.bind("<Escape>", lambda event: self.focus_set())
         
+        # ▼ 自動取得したサブネットを初期入力
+        current_prefix = self.get_local_prefix()
+        self.ip_entry.insert(0, current_prefix)
+        
+        # 追加・探査
         btn_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        btn_frame.grid(row=2, column=0, padx=5, pady=5, sticky="ew")
+        btn_frame.grid(row=3, column=0, padx=5, pady=2, sticky="ew")
         btn_frame.grid_columnconfigure((0,1), weight=1)
-        ctk.CTkButton(btn_frame, text="追加", command=self.add_manual_ip, width=40).grid(row=2, column=0, padx=(0,2))
+        ctk.CTkButton(btn_frame, text="追加", command=self.add_manual_ip, width=40).grid(row=3, column=0, padx=(0,2))
         self.scan_btn = ctk.CTkButton(btn_frame, text="探査", fg_color="#2E7D32", command=self.start_scan, width=40)
-        self.scan_btn.grid(row=2, column=1, padx=(2,0))
+        self.scan_btn.grid(row=3, column=1, padx=(2,0))
 
+        # 更新
         self.refresh_all_btn = ctk.CTkButton(self.sidebar, text="🔄 更新", fg_color="#546E7A", command=self.refresh_all_status)
-        self.refresh_all_btn.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
+        self.refresh_all_btn.grid(row=4, column=0, padx=10, pady=2, sticky="ew")
         
+        # ステータスラベル
         self.status_label = ctk.CTkLabel(self.sidebar, text="待機中", text_color="gray", font=("Arial", 11))
-        self.status_label.grid(row=4, column=0, padx=5, pady=0)
+        self.status_label.grid(row=5, column=0, padx=5, pady=0)
 
         # 一括操作セクション
-        ctk.CTkLabel(self.sidebar, text="一括", font=("Arial", 14, "bold")).grid(row=5, column=0, padx=5, pady=(20, 5))
+        ctk.CTkLabel(self.sidebar, text="一括", font=("Arial", 14, "bold")).grid(row=6, column=0, padx=5, pady=(5, 2))
 
+        # 電源
         self.power_label = ctk.CTkLabel(self.sidebar, text="Power", 
                                         fg_color="#1f538d", corner_radius=6, height=35,
                                         font=("Arial", 13, "bold"), cursor="hand2")
-        self.power_label.grid(row=6, column=0, padx=10, pady=5, sticky="ew")
+        self.power_label.grid(row=7, column=0, padx=10, pady=2, sticky="ew")
         
         self.all_power_menu = tk.Menu(self, tearoff=0, font=("Arial", 12))
         self.all_power_menu.add_command(label="⚡ ALL Power ON", command=lambda: self.control_all_power("Power ON"))
         self.all_power_menu.add_command(label="💤 ALL Power OFF", command=lambda: self.control_all_power("Power OFF"))
         self.power_label.bind("<ButtonRelease-1>", lambda e: self.all_power_menu.tk_popup(e.x_root, e.y_root))
 
+        # ミュート
+        
+        
+        # Mute ONボタン
+        self.btn_mute_on = ctk.CTkButton(
+            self.sidebar, 
+            text="Mute ON", 
+            fg_color="#C62828", 
+            command=lambda: self.control_all_mute(True)  # bindではなくcommandを使う
+        )
+        self.btn_mute_on.grid(row=8, column=0, padx=10, pady=2, sticky="ew")
+
+        # Mute OFFボタン
+        self.btn_mute_off = ctk.CTkButton(
+            self.sidebar, 
+            text="Mute OFF", 
+            fg_color="gray", 
+            command=lambda: self.control_all_mute(False) # commandを使う
+        )
+        self.btn_mute_off.grid(row=9, column=0, padx=10, pady=2, sticky="ew")
+        
+        """
         self.btn_mute_on = ctk.CTkButton(self.sidebar, text="Mute ON", fg_color="#C62828")
         self.btn_mute_on.bind("<ButtonRelease-1>", lambda event: self.control_all_mute(True))
-        self.btn_mute_on.grid(row=7, column=0, padx=10, pady=5, sticky="ew")
+        self.btn_mute_on.grid(row=8, column=0, padx=10, pady=2, sticky="ew")
 
         self.btn_mute_off = ctk.CTkButton(self.sidebar, text="Mute OFF", fg_color="gray")
         self.btn_mute_off.bind("<ButtonRelease-1>", lambda event: self.control_all_mute(False))
-        self.btn_mute_off.grid(row=8, column=0, padx=10, pady=5, sticky="ew")
-
+        self.btn_mute_off.grid(row=9, column=0, padx=10, pady=2, sticky="ew")
+        """
+        
+        # インプットセレクト
         self.all_input_menu = ctk.CTkOptionMenu(self.sidebar, 
             values=["HDMI 1", "HDMI 2", "SDI (Digi 3)", "VGA (RGB 1)", "NETWORK"], 
             command=self.control_all_input)
         self.all_input_menu.set("Input Select")
-        self.all_input_menu.grid(row=9, column=0, padx=10, pady=5, sticky="ew")
-
+        self.all_input_menu.grid(row=10, column=0, padx=10, pady=2, sticky="ew")
 
         # 整列セクション
-        ctk.CTkLabel(self.sidebar, text="整列", font=("Arial", 14, "bold")).grid(row=10, column=0, padx=5, pady=(15, 0))
+        ctk.CTkLabel(self.sidebar, text="整列", font=("Arial", 14, "bold")).grid(row=11, column=0, padx=5, pady=(5, 0))
         self.sort_menu = ctk.CTkOptionMenu(self.sidebar, values=["IPアドレス順", "名前順", "手動設定..."], command=self.handle_sort_menu)
         self.sort_menu.set("ソート")
-        self.sort_menu.grid(row=11, column=0, padx=10, pady=5, sticky="ew")
+        self.sort_menu.grid(row=12, column=0, padx=10, pady=2, sticky="ew")
 
         # データ・設定セクション
-        ctk.CTkLabel(self.sidebar, text="特別", font=("Arial", 14, "bold")).grid(row=12, column=0, padx=5, pady=(15, 0))
+        ctk.CTkLabel(self.sidebar, text="特別", font=("Arial", 14, "bold")).grid(row=14, column=0, padx=5, pady=(5, 0))
         self.manage_menu = ctk.CTkOptionMenu(self.sidebar, values=["手動で保存", "データ初期化"], command=self.handle_manage_menu)
         self.manage_menu.set("データ")
-        self.manage_menu.grid(row=13, column=0, padx=10, pady=(0, 5), sticky="ew")
+        self.manage_menu.grid(row=15, column=0, padx=10, pady=(0, 2), sticky="ew")
 
         self.theme_menu = ctk.CTkOptionMenu(self.sidebar, values=["ライトモード", "ダークモード"], command=self.change_theme)
         self.theme_menu.set("テーマ")
-        self.theme_menu.grid(row=14, column=0, padx=10, pady=(0, 20), sticky="ew")
+        self.theme_menu.grid(row=16, column=0, padx=10, pady=(0, 10), sticky="ew")
 
         # -----------------------------------
         # 2. メインエリア
@@ -517,22 +558,49 @@ class App(ctk.CTk):
         # キーボード操作を有効化
         self.bind("<Key>", self.handle_keypress)
         
-        # サイドバーの一括操作セクション
-        ctk.CTkLabel(self.sidebar, text="一括", font=("Arial", 14, "bold")).grid(row=5, column=0, padx=5, pady=(20, 5))
-        
-        # --- [新規] 一括入力切替メニュー ---
-        self.all_input_menu = ctk.CTkOptionMenu(
-            self.sidebar, 
-            values=["HDMI 1", "HDMI 2", "SDI (Digi 3)", "VGA (RGB 1)", "NETWORK"], 
-            command=self.control_all_input
-        )
-        self.all_input_menu.set("Input Select")
-        self.all_input_menu.grid(row=9, column=0, padx=10, pady=5, sticky="ew") # 位置は既存ボタンの下へ
-        
-        #####
+        """
+         --- [新規] 一括入力切替メニュー ---
+         self.all_input_menu = ctk.CTkOptionMenu(
+             self.sidebar, 
+             values=["HDMI 1", "HDMI 2", "SDI (Digi 3)", "VGA (RGB 1)", "NETWORK"], 
+             command=self.control_all_input
+         )
+         self.all_input_menu.set("Input Select")
+         self.all_input_menu.grid(row=9, column=0, padx=10, pady=5, sticky="ew") # 位置は既存ボタンの下へ
+        """
 
         # ウィンドウを閉じるボタンが押された時の動作を指定
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+        # ロック対象のウィジェット
+        self.sidebar_elements = [
+            self.ip_entry, self.scan_btn, self.refresh_all_btn,
+            self.btn_mute_on, self.btn_mute_off,
+            self.all_input_menu, self.sort_menu, self.manage_menu, self.theme_menu
+        ]
+        
+        for element in self.sidebar_elements:
+            try:
+                # これが「クリックされた時にフォーカスを奪う」という魔法の言葉です
+                element.configure(takefocus=True)
+            except:
+                pass
+            
+
+    def get_local_prefix(self):
+        """自身のIPアドレスを取得してサブネットプレフィックスを返す"""
+        try:
+            # 実際にパケットは飛ばさずに、ルートを確認する手法
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+            # 最後のドットまでを抽出 (例: 192.168.1.15 -> 192.168.1.)
+            return ".".join(local_ip.split(".")[:-1]) + "."
+        except:
+            # ネットワーク未接続などの場合はデフォルト値を返す
+            return "192.168.0."
+
 
     def control_all_input(self, choice):
         """全台の入力を一斉に切り替える"""
@@ -571,33 +639,42 @@ class App(ctk.CTk):
         
         self.sort_menu.set("ソート")
 
-    # --- テーマ設定の保存と読み込み ---
+
     def load_settings(self):
         theme = "ライトモード"
+        last_prefix = self.get_local_prefix() # デフォルトは自動取得
+        
         if os.path.exists(SETTINGS_FILE):
             try:
                 with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
                     s = json.load(f)
                     theme = s.get("theme", "ライトモード")
+                    last_prefix = s.get("last_prefix", last_prefix)
                     geo = s.get("geometry")
                     if geo: self.geometry(geo)
             except: pass
         
-        # ▼ ここを修正：読み込んだテーマを適用するが、表示は「テーマ」に固定する
         self.change_theme(theme, save=False)
         self.theme_menu.set("テーマ")
+        
+        # 保存されていたプレフィックスを入力欄にセット
+        self.ip_entry.delete(0, 'end')
+        self.ip_entry.insert(0, last_prefix)
 
     def save_current_settings(self, theme_choice=None):
-        """現在のテーマとウィンドウのジオメトリを保存する"""
         if theme_choice is None:
             theme_choice = self.theme_menu.get()
             
-        # ▼ 修正：winfo_widthなどを使う代わりに self.geometry() で
-        # 現在の状態を文字列（"幅x高さ+X+Y"）として取得します。
-        # これが読み込み時と最も整合性が取れる値です。
+        # 現在入力欄にあるプレフィックスも取得
+        current_ip_text = self.ip_entry.get().strip()
+        prefix = "192.168.0." # デフォルト
+        if "." in current_ip_text:
+            prefix = ".".join(current_ip_text.split(".")[:-1]) + "."
+
         settings = {
             "theme": theme_choice,
-            "geometry": self.geometry() 
+            "geometry": self.geometry(),
+            "last_prefix": prefix  # プレフィックスを保存対象に追加
         }
         try:
             with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
@@ -616,7 +693,6 @@ class App(ctk.CTk):
         # ▼ これを追加：選択が終わったら表示をリセット
         self.theme_menu.set("テーマ")
 
-    # --- 以下、ロジック変更なし ---
     def rename_preset(self, num):
         num_str = str(num)
         current_name = self.presets_data.get(num_str, {}).get("name", f"Preset {num}")
@@ -775,12 +851,17 @@ class App(ctk.CTk):
                 
                 self.presets_data.clear()
                 for i in range(1, 11):
-                    # ▼ ここを修正：False を消して引数を1つにする
                     self._update_preset_button_ui(str(i))
                 
                 if os.path.exists(CONFIG_FILE): os.remove(CONFIG_FILE)
                 if os.path.exists(PRESETS_FILE): os.remove(PRESETS_FILE)
                 self.rearrange_grid() # 画面を真っさらに
+                                
+                # 入力欄をリセットして、最新のサブネットを再取得
+                self.ip_entry.delete(0, 'end')
+                new_prefix = self.get_local_prefix()
+                self.ip_entry.insert(0, new_prefix)
+                
                 self.status_label.configure(text="初期化しました")
 
         # 5. メニューの表示を「データ」に戻す
@@ -853,34 +934,44 @@ class App(ctk.CTk):
             json.dump(devices, f, ensure_ascii=False, indent=4)
 
     def add_manual_ip(self):
+        # 1. ロック確認
+        if self.lock_switch.get() == 1:
+            return
+            
         ip = self.ip_entry.get().strip()
         
-        # 1. 空文字チェック
+        # 2. 空文字チェック
         if not ip:
             return
 
-        # 2. IPアドレスの形式チェック（簡易版）
-        # 各数字が0-255の間で、4つの塊があるか確認
+        # 3. バリデーション（簡易）
         parts = ip.split('.')
-        if len(parts) != 4 or not all(p.isdigit() and 0 <= int(p) <= 255 for p in parts):
-            messagebox.showerror("入力エラー", f"'{ip}' は正しいIPアドレスの形式ではありません。\n(例: 192.168.0.10)", parent=self)
+        if len(parts) != 4:
+            import tkinter.messagebox as messagebox
+            messagebox.showerror("入力エラー", "正しいIPアドレスを入力してください", parent=self)
             return
 
-        # 3. 重複チェック
-        if ip in self.registered_ips:
-            messagebox.showwarning("重複", f"IP: {ip} はすでに登録されています。", parent=self)
-            self.ip_entry.delete(0, 'end')
-            return
+        # 4. プレフィックスの計算
+        prefix = ".".join(ip.split(".")[:-1]) + "."
 
-        # チェックを通過したら処理開始
+        # 5. 入力欄のリセットと再入力
         self.ip_entry.delete(0, 'end')
-        self.status_label.configure(text="接続確認中...")
+        self.ip_entry.insert(0, prefix)
         
-        # 名前取得のスレッドを開始
+        # 6. フォーカスを戻す（一番安全な書き方）
+        self.ip_entry.focus_set()
+        self.ip_entry.icursor('end')
+
+        # 7. 追加処理の実行
+        import threading
         threading.Thread(target=self._fetch_name_and_add, args=(ip,), daemon=True).start()
         
-        # フォーカスをメイン画面に戻す
-        self.focus_set()
+        # 保存（設定ファイルへ）
+        self.save_current_settings()
+        
+    def _refocus_entry(self):
+        self.ip_entry.focus_set()
+        self.ip_entry.icursor('end')
 
     def _fetch_name_and_add(self, ip):
         name = "不明"
@@ -911,6 +1002,8 @@ class App(ctk.CTk):
             self.after(3000, lambda: self.status_label.configure(text_color="gray"))
 
     def start_scan(self):
+        self.set_sidebar_state("disabled")
+        self.lock_switch.configure(state="disabled") # スキャン中はスイッチも触らせない
         self.scan_btn.configure(state="disabled"); self.status_label.configure(text="探査中...") 
         threading.Thread(target=self._scan_network, daemon=True).start()
 
@@ -927,6 +1020,10 @@ class App(ctk.CTk):
         self.after(0, self._finish_scan, found)
 
     def _finish_scan(self, found):
+        self.lock_switch.configure(state="normal")
+        # もし「手動ロック」がオフなら、状態を normal に戻す
+        if self.lock_switch.get() == 0:
+            self.set_sidebar_state("normal")
         self.scan_btn.configure(state="normal"); self.status_label.configure(text=f"{len(found)}台発見")
         for ip in found: threading.Thread(target=self._fetch_name_and_add, args=(ip,), daemon=True).start()
         
@@ -1038,6 +1135,31 @@ class App(ctk.CTk):
             if data:
                 self.process_command(data)
             conn.close()
+            
+    def toggle_manual_lock(self):
+        """スイッチの状態でサイドバーをロック/解除"""
+        if self.lock_switch.get() == 1:
+            self.set_sidebar_state("disabled")
+            self.status_label.configure(text="操作ロック中", text_color="#FF5252")
+        else:
+            self.set_sidebar_state("normal")
+            self.status_label.configure(text="待機中", text_color="gray")
+
+    def set_sidebar_state(self, state="normal"):
+        """一括切り替え（ラベルのバインド解除も考慮）"""
+        for element in self.sidebar_elements:
+            try:
+                element.configure(state=state)
+            except:
+                pass
+
+        # --- Powerラベル（Label）のクリック無効化 ---
+        if state == "disabled":
+            self.power_label.unbind("<ButtonRelease-1>")
+            self.power_label.configure(cursor="arrow", fg_color="#37474F") # 色を暗くして無効感を出す
+        else:
+            self.power_label.bind("<ButtonRelease-1>", lambda e: self.all_power_menu.tk_popup(e.x_root, e.y_root))
+            self.power_label.configure(cursor="hand2", fg_color="#1f538d")
             
 
 if __name__ == "__main__":
