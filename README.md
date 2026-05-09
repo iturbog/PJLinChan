@@ -1,7 +1,8 @@
 # Name
 /iturbog/PJLinChan/
 
-PJリンちゃん v0.1 [/br]
+PJリンちゃん v0.1
+
 Projectores Controller via PJLink
 
 # DEMO
