@@ -10,7 +10,7 @@ Projectores Controller via PJLink
 うまく書けない
 
 ### Requirement
-ライブラリは後程
+[requirements](https://github.com/iturbog/PJLinChan/requirements.txt)
 
 ### Installation
 ### Usage
@@ -26,6 +26,7 @@ Projectores Controller via PJLink
 
 ## v0.1<br>
 ## v0.2<br>
+- 外部機器で制御（UDP）
 ## v0.3<br>
 ## v0.4<br>
 ## v0.5<br>
