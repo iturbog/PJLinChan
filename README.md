@@ -6,7 +6,7 @@ Projectores Controller via PJLink
 SS
 
 ### Features
-外部から叩ける
+うまく書けない
 
 ### Requirement
 ライブラリは後程
