@@ -2,23 +2,25 @@
 # PJリンちゃん PJLinChan
 Projectores Controller via PJLink
 
-## DEMO
+### DEMO
 SS
 
-## Features
+### Features
 外部から叩ける
 
-## Requirement
+### Requirement
 ライブラリは後程
 
-## Installation
-## Usage
+### Installation
+### Usage
 ## Note
 ご使用は自己責任で
 
-## Author
+### Author
 - 作成者		takaSHIKI
 - 所属		Magnux inc.
 - E-mail	takaSHIKI
 
-## License
+### License
+
+## v0.1<br>
