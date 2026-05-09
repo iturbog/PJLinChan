@@ -3,8 +3,8 @@
 Projectores Controller via PJLink
 
 ### DEMO
-SS
-![](https://github.com/iturbog/PJLinChan/blob/main/SS.png)
+<img src="[画像URL](https://github.com/iturbog/PJLinChan/blob/main/SS.png)" width="200px">
+![SS](https://github.com/iturbog/PJLinChan/blob/main/SS.png)
 
 ### Features
 うまく書けない
