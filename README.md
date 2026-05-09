@@ -1,6 +1,5 @@
-/iturbog/PJLinChan/<br>
+### /iturbog/PJLinChan/<br>
 # PJリンちゃん PJLinChan
-v0.1<br>
 Projectores Controller via PJLink
 
 ## DEMO
