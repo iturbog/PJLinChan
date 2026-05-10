@@ -10,7 +10,8 @@ PJ Link 経由でプロジェクターを操作するアプリケーションで
 - 電源の入り切り
 - ミュート（シャッター）のオンオフ
 - 入力切り替え（あまりあてにならない）
-<br>
+
+
 おまけ機能
 - プリセット（10種）
   - プリセット対象の選択可
@@ -22,7 +23,7 @@ v0.2<br>
 <img src="https://github.com/iturbog/PJLinChan/blob/main/SS.png" width="240px">
 
 v0.5<br>
-<img src="https://github.com/iturbog/PJLinChan/blob/main/SS.png" width="240px">
+<img src="https://github.com/iturbog/PJLinChan/blob/main/SS0p5.png" width="240px">
 
 ### Features
 ### Requirement
