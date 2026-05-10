@@ -3,11 +3,26 @@
 # PJリンちゃん PJLinChan
 Projectores Controller via PJLink
 
+PJ Link 経由でプロジェクターを操作するアプリケーションです。<br>
+プロジェクターに対する簡単操作しか出来ません。
+
+プロジェクターに対する主な操作
+- 電源の入り切り
+- ミュート（シャッター）のオンオフ
+- 入力切り替え（あまりあてにならない）
+<br>
+おまけ機能
+- プリセット（10種）
+  - プリセット対象の選択可
+- UDPで被コントロール
+  - メディアサーバなどから操作を実行
+
 ### DEMO
 v0.2<br>
 <img src="https://github.com/iturbog/PJLinChan/blob/main/SS.png" width="240px">
 
 v0.5<br>
+<img src="https://github.com/iturbog/PJLinChan/blob/main/SS.png" width="240px">
 
 ### Features
 ### Requirement
@@ -29,6 +44,7 @@ v0.5<br>
 ### v0.1<br>
 ### v0.2<br>
 - 外部機器で制御（UDP）
+- 入力切り替え（あまりあてにならない）
 ### v0.3<br>
 ### v0.4<br>
 ### v0.5<br>
