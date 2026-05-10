@@ -587,7 +587,37 @@ class App(ctk.CTk):
                 element.configure(takefocus=True)
             except:
                 pass
-            
+
+    
+        # 1. サイズ設定の定義
+        self.grid_configs = {
+            "small":  {"width": 160, "height": 100, "font_size": 11, "padding": 5},
+            "medium": {"width": 220, "height": 140, "font_size": 13, "padding": 8},
+            "large":  {"width": 300, "height": 180, "font_size": 15, "padding": 10}
+        }
+        self.current_size = "large" 
+
+        # 2. 右クリックメニュー（コンテキストメニュー）の作成
+        self.context_menu = tk.Menu(self, tearoff=0)
+        self.context_menu.add_command(label="サイズ：小", command=lambda: self.change_grid_size("small"))
+        self.context_menu.add_command(label="サイズ：中", command=lambda: self.change_grid_size("medium"))
+        self.context_menu.add_command(label="サイズ：大", command=lambda: self.change_grid_size("large"))
+
+        # 3. 右クリックイベントのバインド
+        # スクロールフレームの「中身のキャンバス」にバインドするのが一番確実です
+        self.scroll_frame._canvas.bind("<Button-3>", self.show_context_menu)
+        self.scroll_frame._canvas.bind("<Button-2>", self.show_context_menu)
+
+    def show_context_menu(self, event):
+        # 右クリックした位置にメニューを表示
+        self.context_menu.post(event.x_root, event.y_root)
+
+    def change_grid_size(self, size_key):
+        print(f"サイズを {size_key} に変更します（まだ見た目は変わりません）")
+        self.current_size = size_key
+        # ここで本来は「再描画(ステップ4)」を呼び出す
+
+
 
     def get_local_prefix(self):
         """自身のIPアドレスを取得してサブネットプレフィックスを返す"""
