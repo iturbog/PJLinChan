@@ -1,23 +1,42 @@
-.DS_Store
 # --- Python関連 ---
-__pycache__/          # 実行時に自動生成されるキャッシュ（不要）
-*.py[cod]             # Pythonのコンパイル済みファイル
-*$py.class            # Jython用（念のため）
+__pycache__/
+*.py[cod]
+*$py.class
 
 # --- 仮想環境 ---
-.venv/                # 今回作った仮想環境（最重要）
-venv/                 # 別の名前で作った場合用
+.venv/
+venv/
 env/
 
 # --- ビルド・パッケージ関連 ---
-dist/                 # EXEが入るフォルダ
-build/                # EXE化の作業用フォルダ
-*.spec                # PyInstallerの設定ファイル
+dist/
+build/
+*.spec
 
 # --- エディタ関連 ---
-.vscode/              # 自分好みのエディタ設定（他人と競合するため）
+.vscode/
+
+
+
+# --- macOS 固有のシステムファイル ---
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# アイコン用ファイル（隠しファイル）
+Icon?
+
+# サムネイル・メタデータ（Windowsで見ると ._main.py のように見えるやつ）
+._*
+
+# ボリューム固有のフォルダ（外付けHDDなど）
+.Spotlight-V100
+.Trashes
+.fseventsd
+
+
 
 # --- アプリ固有のデータ（要注意！） ---
-projectors.json       # 登録したプロジェクター情報
-presets.json          # プリセット内容
-settings.json         # ウィンドウサイズやテーマ設定
+projectors.json
+presets.json
+settings.json

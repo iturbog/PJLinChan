@@ -15,7 +15,8 @@ VERSION = "0.5"
 
 
 
-# pyinstaller --noconsole --onefile --name "PJリンちゃん_v0.5" --icon="image/icon.ico" --add-data "image;image" main.py
+# pyinstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.5" --icon="image/icon.ico" --add-data "image;image" main.py
+# python -m PyInstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.5" --icon="image/icon.ico" --add-data "image;image" main.py
 #
 # python -m venv .venv
 # Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
@@ -446,7 +447,8 @@ class App(ctk.CTk):
         self.all_power_menu = tk.Menu(self, tearoff=0, font=("Arial", 12))
         self.all_power_menu.add_command(label="⚡ ALL Power ON", command=lambda: self.control_all_power("Power ON"))
         self.all_power_menu.add_command(label="💤 ALL Power OFF", command=lambda: self.control_all_power("Power OFF"))
-        self.power_label.bind("<ButtonRelease-1>", lambda e: self.all_power_menu.tk_popup(e.x_root, e.y_root))
+        # self.power_label.bind("<ButtonRelease-1>", lambda e: self.all_power_menu.tk_popup(e.x_root, e.y_root))
+        self.power_label.bind("<ButtonRelease-1>", lambda e: (self.focus_set(), self.all_power_menu.tk_popup(e.x_root, e.y_root)))
 
         # ミュート
         
@@ -604,6 +606,7 @@ class App(ctk.CTk):
 
     def control_all_input(self, choice):
         """全台の入力を一斉に切り替える"""
+        self.focus_set()
         mapping = {
             "HDMI 1": ("DIGITAL", 1),
             "HDMI 2": ("DIGITAL", 2),
@@ -621,6 +624,7 @@ class App(ctk.CTk):
         self.all_input_menu.set("Input Select")
         
     def handle_sort_menu(self, choice):
+        self.focus_set()
         if not self.projector_cards: return
 
         if choice == "IPアドレス順":
@@ -682,6 +686,7 @@ class App(ctk.CTk):
         except: pass
 
     def change_theme(self, choice, save=True):
+        self.focus_set()
         if choice == "ダークモード":
             ctk.set_appearance_mode("Dark")
         else:
@@ -835,6 +840,7 @@ class App(ctk.CTk):
             self.rearrange_grid()
 
     def handle_manage_menu(self, choice):
+        self.focus_set()
         if choice == "手動で保存":
             self.save_devices()
             self._save_presets_to_file()
@@ -889,6 +895,7 @@ class App(ctk.CTk):
         elif event.keysym == 'Down': self.control_all_mute(True)
 
     def refresh_all_status(self):
+        self.focus_set()
         for card in self.projector_cards:
             # ▼ ここが重要：IPが "spacer" ではない（実機）ときだけ通信する
             if hasattr(card, "ip") and card.ip != "spacer":
@@ -937,36 +944,51 @@ class App(ctk.CTk):
         # 1. ロック確認
         if self.lock_switch.get() == 1:
             return
+
+        # 2. フォーカスを一度奪う (OSに入力を確定させるおまじない)
+        self.focus_set()
             
         ip = self.ip_entry.get().strip()
         
-        # 2. 空文字チェック
+        # 3. 未入力チェック
         if not ip:
             return
 
-        # 3. バリデーション（簡易）
+        # 4. IPアドレスの形式チェック (バリデーション)
+        is_valid = True
         parts = ip.split('.')
-        if len(parts) != 4:
+        if len(parts) == 4:
+            for part in parts:
+                if not part.isdigit() or not (0 <= int(part) <= 255):
+                    is_valid = False
+                    break
+        else:
+            is_valid = False
+
+        if not is_valid:
             import tkinter.messagebox as messagebox
-            messagebox.showerror("入力エラー", "正しいIPアドレスを入力してください", parent=self)
+            messagebox.showerror("入力エラー", f"'{ip}' は正しいIPアドレスではありません。\n(例: 192.168.0.10)", parent=self)
+            # エラーの時は、打ち直ししやすいように入力欄にフォーカスを戻して終了
+            self.after(50, lambda: (self.ip_entry.focus_set(), self.ip_entry.icursor('end')))
             return
 
-        # 4. プレフィックスの計算
-        prefix = ".".join(ip.split(".")[:-1]) + "."
+        # --- 以下、正常な場合の処理 ---
 
-        # 5. 入力欄のリセットと再入力
+        # 5. 次回のためのプレフィックス抽出
+        prefix = ".".join(parts[:-1]) + "."
+
+        # 6. 入力欄のリセットと再入力
         self.ip_entry.delete(0, 'end')
         self.ip_entry.insert(0, prefix)
         
-        # 6. フォーカスを戻す（一番安全な書き方）
-        self.ip_entry.focus_set()
-        self.ip_entry.icursor('end')
+        # 7. 連続入力のためにフォーカスを戻す
+        self.after(50, lambda: (self.ip_entry.focus_set(), self.ip_entry.icursor('end')))
 
-        # 7. 追加処理の実行
+        # 8. 追加・探査処理の実行
         import threading
         threading.Thread(target=self._fetch_name_and_add, args=(ip,), daemon=True).start()
         
-        # 保存（設定ファイルへ）
+        # 設定を保存
         self.save_current_settings()
         
     def _refocus_entry(self):
@@ -1002,6 +1024,7 @@ class App(ctk.CTk):
             self.after(3000, lambda: self.status_label.configure(text_color="gray"))
 
     def start_scan(self):
+        self.focus_set()
         self.set_sidebar_state("disabled")
         self.lock_switch.configure(state="disabled") # スキャン中はスイッチも触らせない
         self.scan_btn.configure(state="disabled"); self.status_label.configure(text="探査中...") 
@@ -1069,6 +1092,7 @@ class App(ctk.CTk):
                 card.control_power(command)
 
     def control_all_mute(self, is_mute):
+        self.focus_set()
         if is_mute:
             self.btn_mute_on.configure(fg_color="#FF0000") 
             self.btn_mute_off.configure(fg_color="#444444") 
@@ -1158,7 +1182,6 @@ class App(ctk.CTk):
             self.power_label.unbind("<ButtonRelease-1>")
             self.power_label.configure(cursor="arrow", fg_color="#37474F") # 色を暗くして無効感を出す
         else:
-            self.power_label.bind("<ButtonRelease-1>", lambda e: self.all_power_menu.tk_popup(e.x_root, e.y_root))
             self.power_label.configure(cursor="hand2", fg_color="#1f538d")
             
 
