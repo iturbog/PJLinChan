@@ -22,7 +22,7 @@ v0.2<br>
 <img src="https://github.com/iturbog/PJLinChan/blob/main/SS.png" width="240px">
 
 v0.5<br>
-<img src="https://github.com/iturbog/PJLinChan/blob/main/SS.png" width="240px">
+<img src="https://github.com/iturbog/PJLinChan/blob/main/SS0p5.png" width="240px">
 
 ### Features
 ### Requirement
