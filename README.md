@@ -19,7 +19,7 @@ PJ Link 経由でプロジェクターを操作するアプリケーションで
 
 ### DEMO
 v0.2<br>
-<img src="httpsで://github.com/iturbog/PJLinChan/blob/main/SS.png" width="240px">
+<img src="https://github.com/iturbog/PJLinChan/blob/main/SS.png" width="240px">
 
 v0.5<br>
 
