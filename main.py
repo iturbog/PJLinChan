@@ -15,7 +15,7 @@ VERSION = "0.5"
 
 
 
-# pyinstaller --noconsole --onefile --name "PJリンちゃん_v0.2" --icon="image/icon.ico" --add-data "image;image" main.py
+# pyinstaller --noconsole --onefile --name "PJリンちゃん_v0.5" --icon="image/icon.ico" --add-data "image;image" main.py
 #
 # python -m venv .venv
 # Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
