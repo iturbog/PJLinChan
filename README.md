@@ -3,6 +3,8 @@
 # PJリンちゃん PJLinChan
 Projectores Controller via PJLink
 
+[Manual](https://github.com/iturbog/PJLinChan/blob/main/requirements.txt)
+
 PJ Link 経由でプロジェクターを操作するアプリケーションです。<br>
 プロジェクターに対する簡単操作しか出来ません。
 
