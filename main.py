@@ -11,12 +11,11 @@ import threading
 import sys # sysのインポートが必要です
 import webbrowser
 
-VERSION = "0.6b"
+VERSION = "0.6c"
 
 
 
-# pyinstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.6b" --icon="image/icon.ico" --add-data "image;image" main.py
-# python -m PyInstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.6a" --icon="image/icon.ico" --add-data "image;image" main.py
+# python -m PyInstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.6c" --icon="image/icon.ico" --add-data "image;image" main.py
 #
 # pip install pyinstaller
 #
@@ -383,7 +382,7 @@ class App(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title(f"PJリンちゃん {VERSION} - PJLink Multi-Controller -")
-        self.geometry("1150x850")
+        self.geometry("640x480")
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -413,7 +412,7 @@ class App(ctk.CTk):
             "medium": {"width": 150, "height": 195, "font_size": 14, "padding": 10, "col_width": 170},
             "large":  {"width": 200, "height": 260, "font_size": 16, "padding": 10, "col_width": 220}
         }
-        self.current_size = "small" # 初期値は大のまま
+        self.current_size = "small"
 
 
 
@@ -425,6 +424,10 @@ class App(ctk.CTk):
         # 6: 一括Label / 7: PowerLabel / 8: MuteON / 9: MuteOFF / 10: InputSelect
         # 11: 整列Label / 12: SortMenu
         # 13: 特別Label / 14: DataMenu / 15: ThemeMenu
+
+        # サイドバーのボタンの高さを統一するための変数
+        sa_h = 24
+        sb_h = 20 
         
         self.sidebar = ctk.CTkFrame(self, width=110, corner_radius=0)
         self.sidebar.grid(row=0, column=0, rowspan=2, sticky="nsew")
@@ -453,14 +456,14 @@ class App(ctk.CTk):
         
         # 追加・探査
         btn_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        btn_frame.grid(row=3, column=0, padx=5, pady=2, sticky="ew")
+        btn_frame.grid(row=3, column=0, padx=5, pady=8, sticky="ew")
         btn_frame.grid_columnconfigure((0,1), weight=1)
-        ctk.CTkButton(btn_frame, text="追加", command=self.add_manual_ip, width=40).grid(row=3, column=0, padx=(0,2))
-        self.scan_btn = ctk.CTkButton(btn_frame, text="探査", fg_color="#2E7D32", command=self.start_scan, width=40)
+        ctk.CTkButton(btn_frame, text="追加",height=sa_h, command=self.add_manual_ip, width=40).grid(row=3, column=0, padx=(0,2))
+        self.scan_btn = ctk.CTkButton(btn_frame, text="探査", fg_color="#2E7D32",height=sa_h, command=self.start_scan, width=40)
         self.scan_btn.grid(row=3, column=1, padx=(2,0))
 
         # 更新
-        self.refresh_all_btn = ctk.CTkButton(self.sidebar, text="🔄 更新", fg_color="#546E7A", command=self.refresh_all_status)
+        self.refresh_all_btn = ctk.CTkButton(self.sidebar, text="🔄 更新", fg_color="#546E7A", height=sa_h, command=self.refresh_all_status)
         self.refresh_all_btn.grid(row=4, column=0, padx=10, pady=2, sticky="ew")
         
         # ステータスラベル
@@ -468,11 +471,11 @@ class App(ctk.CTk):
         self.status_label.grid(row=5, column=0, padx=5, pady=0)
 
         # 一括操作セクション
-        ctk.CTkLabel(self.sidebar, text="一括", font=("Arial", 14, "bold")).grid(row=6, column=0, padx=5, pady=(5, 2))
+        ctk.CTkLabel(self.sidebar, text="一括", height=sb_h, font=("Arial", 14, "bold")).grid(row=6, column=0, padx=5, pady=(5, 2))
 
         # 電源
         self.power_label = ctk.CTkLabel(self.sidebar, text="Power", 
-                                        fg_color="#1f538d", corner_radius=6, height=35,
+                                        fg_color="#1f538d", corner_radius=6, height=sb_h,
                                         font=("Arial", 13, "bold"), cursor="hand2")
         self.power_label.grid(row=7, column=0, padx=10, pady=2, sticky="ew")
         
@@ -480,16 +483,18 @@ class App(ctk.CTk):
         self.all_power_menu.add_command(label="⚡ ALL Power ON", command=lambda: self.control_all_power("Power ON"))
         self.all_power_menu.add_command(label="💤 ALL Power OFF", command=lambda: self.control_all_power("Power OFF"))
         # self.power_label.bind("<ButtonRelease-1>", lambda e: self.all_power_menu.tk_popup(e.x_root, e.y_root))
-        self.power_label.bind("<ButtonRelease-1>", lambda e: (self.focus_set(), self.all_power_menu.tk_popup(e.x_root, e.y_root)))
+        # self.power_label.bind("<ButtonRelease-1>", lambda e: (self.focus_set(), self.all_power_menu.tk_popup(e.x_root, e.y_root)))
 
-        # ミュート
-        
-        
+        # 修正後
+        self.power_label.bind("<ButtonRelease-1>", self.show_all_power_menu)
+
+        # ミュート            
         # Mute ONボタン
         self.btn_mute_on = ctk.CTkButton(
             self.sidebar, 
             text="Mute ON", 
             fg_color="#C62828", 
+            height=sb_h,
             command=lambda: self.control_all_mute(True)  # bindではなくcommandを使う
         )
         self.btn_mute_on.grid(row=8, column=0, padx=10, pady=2, sticky="ew")
@@ -499,40 +504,40 @@ class App(ctk.CTk):
             self.sidebar, 
             text="Mute OFF", 
             fg_color="gray", 
+            height=sb_h,
             command=lambda: self.control_all_mute(False) # commandを使う
         )
         self.btn_mute_off.grid(row=9, column=0, padx=10, pady=2, sticky="ew")
         
-        """
-        self.btn_mute_on = ctk.CTkButton(self.sidebar, text="Mute ON", fg_color="#C62828")
-        self.btn_mute_on.bind("<ButtonRelease-1>", lambda event: self.control_all_mute(True))
-        self.btn_mute_on.grid(row=8, column=0, padx=10, pady=2, sticky="ew")
-
-        self.btn_mute_off = ctk.CTkButton(self.sidebar, text="Mute OFF", fg_color="gray")
-        self.btn_mute_off.bind("<ButtonRelease-1>", lambda event: self.control_all_mute(False))
-        self.btn_mute_off.grid(row=9, column=0, padx=10, pady=2, sticky="ew")
-        """
+       
         
         # インプットセレクト
         self.all_input_menu = ctk.CTkOptionMenu(self.sidebar, 
             values=["HDMI 1", "HDMI 2", "SDI (Digi 3)", "VGA (RGB 1)", "NETWORK"], 
+            height=sb_h,
             command=self.control_all_input)
         self.all_input_menu.set("Input Select")
         self.all_input_menu.grid(row=10, column=0, padx=10, pady=2, sticky="ew")
 
         # 整列セクション
         ctk.CTkLabel(self.sidebar, text="整列", font=("Arial", 14, "bold")).grid(row=11, column=0, padx=5, pady=(5, 0))
-        self.sort_menu = ctk.CTkOptionMenu(self.sidebar, values=["IPアドレス順", "名前順", "手動設定..."], command=self.handle_sort_menu)
+        self.sort_menu = ctk.CTkOptionMenu(self.sidebar, values=["IPアドレス順", "名前順", "手動設定..."], 
+            height=sb_h,
+            command=self.handle_sort_menu)
         self.sort_menu.set("ソート")
         self.sort_menu.grid(row=12, column=0, padx=10, pady=2, sticky="ew")
 
         # データ・設定セクション
         ctk.CTkLabel(self.sidebar, text="特別", font=("Arial", 14, "bold")).grid(row=14, column=0, padx=5, pady=(5, 0))
-        self.manage_menu = ctk.CTkOptionMenu(self.sidebar, values=["手動で保存", "データ初期化…"], command=self.handle_manage_menu)
+        self.manage_menu = ctk.CTkOptionMenu(self.sidebar, values=["手動で保存", "データ初期化…"], 
+            height=sb_h,
+            command=self.handle_manage_menu)
         self.manage_menu.set("データ")
         self.manage_menu.grid(row=15, column=0, padx=10, pady=(0, 2), sticky="ew")
 
-        self.theme_menu = ctk.CTkOptionMenu(self.sidebar, values=["ライトモード", "ダークモード"], command=self.change_theme)
+        self.theme_menu = ctk.CTkOptionMenu(self.sidebar, values=["ライトモード", "ダークモード"], 
+            height=sb_h,
+            command=self.change_theme)
         self.theme_menu.set("テーマ")
         self.theme_menu.grid(row=16, column=0, padx=10, pady=(0, 10), sticky="ew")
 
@@ -622,8 +627,9 @@ class App(ctk.CTk):
 
     
 
-
-
+        # --- スキャンキャンセルのためのフラグ ---
+        self.is_scanning = False
+        self.cancel_scan = False
 
 
         
@@ -647,11 +653,11 @@ class App(ctk.CTk):
 
 
 
-
+    def show_all_power_menu(self, event):
+        # フォーカス移動はメニューを閉じてしまう原因になるため外します
+        self.all_power_menu.tk_popup(event.x_root, event.y_root)
 
     
-
-
 
     def change_grid_size(self, size_key):
         # サイズを更新して、メインエリアを再描画する
@@ -659,12 +665,7 @@ class App(ctk.CTk):
         self.render_projectors()
 
 
-
-
-
     
-
-
     def render_projectors(self):
         """2. カードを現在のサイズ設定で生成し直す"""
         if not self.projector_cards:
@@ -711,15 +712,9 @@ class App(ctk.CTk):
 
 
 
-
-
-
     def show_context_menu(self, event):
         # 【修正】post()ではなく、他のカードと同じ tk_popup() を使います
         self.context_menu.tk_popup(event.x_root, event.y_root)
-
-
-
 
 
 
@@ -801,11 +796,14 @@ class App(ctk.CTk):
 
     def save_current_settings(self, theme_choice=None):
         if theme_choice is None:
-            theme_choice = self.theme_menu.get()
+            # ▼ 修正：メニューの文字ではなく、現在の実際のモード（Light/Dark）を取得して判定する
+            current_mode = ctk.get_appearance_mode()
+            theme_choice = "ダークモード" if current_mode == "Dark" else "ライトモード"
             
         # 現在入力欄にあるプレフィックスも取得
         current_ip_text = self.ip_entry.get().strip()
         prefix = "192.168.0." # デフォルト
+
         if "." in current_ip_text:
             prefix = ".".join(current_ip_text.split(".")[:-1]) + "."
 
@@ -982,7 +980,7 @@ class App(ctk.CTk):
             self.save_current_settings()
             self.status_label.configure(text="保存完了")
             
-        elif choice == "データ初期化":
+        elif choice == "データ初期化…":
             # parent=selfを追加することで、メインウインドウの中央に出るようになります
             if messagebox.askyesno("警告", "すべてのプロジェクターとプリセットを消去します。\n本当によろしいですか？", parent=self):
                 for card in self.projector_cards:
@@ -1173,12 +1171,32 @@ class App(ctk.CTk):
             # 3秒後に文字色を標準（gray）に戻す
             self.after(3000, lambda: self.status_label.configure(text_color="gray"))
 
+
+
     def start_scan(self):
         self.focus_set()
+        
+        # ▼ すでに探査中ならキャンセル処理をして終了する
+        if self.is_scanning:
+            self.cancel_scan = True
+            self.scan_btn.configure(text="停止中", state="disabled")
+            self.status_label.configure(text="キャンセル処理中...")
+            return
+
+        # ▼ ここから通常の探査開始処理
+        self.is_scanning = True
+        self.cancel_scan = False
+        
         self.set_sidebar_state("disabled")
-        self.lock_switch.configure(state="disabled") # スキャン中はスイッチも触らせない
-        self.scan_btn.configure(state="disabled"); self.status_label.configure(text="探査中...") 
+        self.lock_switch.configure(state="disabled")
+        
+        # 探査ボタンだけは「キャンセルボタン」として押せるように復活させる！
+        self.scan_btn.configure(state="normal", text="中止", fg_color="#C62828")
+        self.status_label.configure(text="探査中...") 
+        
         threading.Thread(target=self._scan_network, daemon=True).start()
+
+
 
     def _scan_network(self):
         try:
@@ -1187,18 +1205,35 @@ class App(ctk.CTk):
         except: base_ip = "192.168.1."
         found = []
         for i in range(1, 255):
+            # ▼ もし「キャンセルボタン」が押されていたら、ループを強制脱出！
+            if self.cancel_scan:
+                break
+                
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.settimeout(0.05)
                 if s.connect_ex((f"{base_ip}{i}", 4352)) == 0: found.append(f"{base_ip}{i}")
+        
         self.after(0, self._finish_scan, found)
 
     def _finish_scan(self, found):
+        # 状態を元に戻す
+        self.is_scanning = False
         self.lock_switch.configure(state="normal")
-        # もし「手動ロック」がオフなら、状態を normal に戻す
         if self.lock_switch.get() == 0:
             self.set_sidebar_state("normal")
-        self.scan_btn.configure(state="normal"); self.status_label.configure(text=f"{len(found)}台発見")
-        for ip in found: threading.Thread(target=self._fetch_name_and_add, args=(ip,), daemon=True).start()
+            
+        # ボタンの見た目を「探査」に戻す
+        self.scan_btn.configure(state="normal", text="探査", fg_color="#2E7D32")
+        
+        # キャンセルされたか、完走したかでステータス表示を分ける
+        if self.cancel_scan:
+            self.status_label.configure(text="探査を中断しました")
+            self.cancel_scan = False
+        else:
+            self.status_label.configure(text=f"{len(found)}台発見")
+            for ip in found: threading.Thread(target=self._fetch_name_and_add, args=(ip,), daemon=True).start()
+
+
         
     def open_manual_sort_dialog(self):
         dialog = ManualSortDialog(self, self.projector_cards)
