@@ -15,8 +15,8 @@ VERSION = "0.6a"
 
 
 
-# pyinstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.5" --icon="image/icon.ico" --add-data "image;image" main.py
-# python -m PyInstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.5" --icon="image/icon.ico" --add-data "image;image" main.py
+# pyinstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.6a" --icon="image/icon.ico" --add-data "image;image" main.py
+# python -m PyInstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.6a" --icon="image/icon.ico" --add-data "image;image" main.py
 #
 # python -m venv .venv
 # Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
@@ -126,31 +126,18 @@ class SpacerCard(ctk.CTkFrame):
         self.bind("<ButtonRelease-3>", lambda e: self.menu.tk_popup(e.x_root, e.y_root))
 
 
+
 class ProjectorCard(ctk.CTkFrame):
     """プロジェクター1台分の操作パネル"""
-    # すべての新しい引数（data, width, height, font_size）にデフォルト値を設定して後ろに配置します
+    # すべての新しい引数（data, width, height, font_size）にデフォルト値を設定して配置
     def __init__(self, master, ip, name=None, icons=None, password=None, rename_cb=None, delete_cb=None, 
                  data=None, width=300, height=180, font_size=15, **kwargs):
         
         # 1. 親クラス（Frame）に動的なサイズを渡す
         super().__init__(master, width=width, height=height, **kwargs)
         
-        # 勝手に枠が縮まないように固定する設定
-        self.grid_propagate(False)
-        self.pack_propagate(False)
-
-        # 2. 表示する名前の決定（dataがあればそこから取り出し、無ければname引数を使う）
-        display_name = data["name"] if data else name
-
-        # 3. ラベルの作成（受け取った font_size を適用）
-        self.name_label = ctk.CTkLabel(self, text=display_name, font=("Arial", font_size, "bold"))
-        self.name_label.pack(pady=5)
-
-
-    
-        super().__init__(master, width=width, height=height, **kwargs)
         self.ip = ip
-        self.name = name
+        self.name = data["name"] if data else name
         self.password = password
         self.icons = icons 
         self.rename_cb = rename_cb
@@ -158,6 +145,10 @@ class ProjectorCard(ctk.CTkFrame):
         self.is_muted = False
         self.power_state = "off"
         self.is_offline = True 
+
+        # 勝手に枠が縮まないように固定する設定
+        self.grid_propagate(False)
+        self.pack_propagate(False)
 
         # --- UI配置 ---
         self.is_targeted = ctk.BooleanVar(value=True)
@@ -172,14 +163,10 @@ class ProjectorCard(ctk.CTkFrame):
         # 左クリック（離した瞬間）でミュート切り替え
         self.icon_btn.bind("<ButtonRelease-1>", lambda e: self.toggle_mute())
 
-        # 情報ラベル (ここでの右クリックは「入力切替」)
+        # 情報ラベル (受け取った font_size を適用)
         self.label = ctk.CTkLabel(self, text=f"{self.name}\n({self.ip})", 
-                                  font=("Arial", 12, "bold"), justify="center", cursor="hand2")
+                                  font=("Arial", font_size, "bold"), justify="center", cursor="hand2")
         self.label.pack(pady=(0, 5))
-
-
-        
-
 
         # --- 1. 管理メニュー (アイコン右クリック用) ---
         self.context_menu = tk.Menu(self, tearoff=0, font=("Arial", 14))
@@ -201,18 +188,17 @@ class ProjectorCard(ctk.CTkFrame):
         self.input_menu.add_separator()
         self.input_menu.add_command(label="VGA (RGB 1)", command=lambda: self.set_input_source("RGB", 1))
 
-
-
-        # --- ★マウスバインドの最終整理★ ---
-        
-        # アイコンを右クリックした時だけ「電源管理」を出す
+        # --- ★マウスバインドの再設定★ ---
+        # アイコンを右クリックした時だけ「電源管理メニュー」を出す
         self.icon_btn.bind("<ButtonRelease-3>", self.show_context_menu)
         
-        # ラベルを右クリックした時は「入力切替」を出す
+        # ラベルを右クリックした時は「入力切替メニュー」を出す
         self.label.bind("<ButtonRelease-3>", self.show_input_menu)
         
-        # (念のため) ラベルを左クリックしても入力切替が出るようにしておきます
+        # ラベルを左クリックしても入力切替が出るようにしておく
         self.label.bind("<ButtonRelease-1>", self.show_input_menu)
+
+
 
     def show_context_menu(self, event):
         """電源・管理メニューを表示"""
@@ -415,6 +401,20 @@ class App(ctk.CTk):
             "power_on_projecting": load_or_create_dummy_image("image/icon_power_on_projecting.png", icon_size),
         }
 
+
+
+
+        # --- UI作成の前に、グリッドサイズの設定を追加 ---
+        self.grid_configs = {
+            "small":  {"width": 160, "height": 110, "font_size": 10, "padding": 5, "col_width": 175},
+            "medium": {"width": 230, "height": 150, "font_size": 12, "padding": 8, "col_width": 245},
+            "large":  {"width": 300, "height": 180, "font_size": 14, "padding": 10, "col_width": 320}
+        }
+        self.current_size = "large" # 初期値は大
+
+
+
+
         # -----------------------------------
         # 1. サイドバー
         # -----------------------------------
@@ -525,7 +525,7 @@ class App(ctk.CTk):
 
         # データ・設定セクション
         ctk.CTkLabel(self.sidebar, text="特別", font=("Arial", 14, "bold")).grid(row=14, column=0, padx=5, pady=(5, 0))
-        self.manage_menu = ctk.CTkOptionMenu(self.sidebar, values=["手動で保存", "データ初期化"], command=self.handle_manage_menu)
+        self.manage_menu = ctk.CTkOptionMenu(self.sidebar, values=["手動で保存", "データ初期化…"], command=self.handle_manage_menu)
         self.manage_menu.set("データ")
         self.manage_menu.grid(row=15, column=0, padx=10, pady=(0, 2), sticky="ew")
 
@@ -620,21 +620,22 @@ class App(ctk.CTk):
     
 
 
-
-    
-
         
-        # --- 右クリックメニューの設定 (__init__内) ---
-        self.context_menu = tk.Menu(self, tearoff=0)
-        self.context_menu.add_command(label="サイズ：小", command=lambda: self.change_grid_size("small"))
-        self.context_menu.add_command(label="サイズ：中", command=lambda: self.change_grid_size("medium"))
-        self.context_menu.add_command(label="サイズ：大", command=lambda: self.change_grid_size("large"))
+        # --- 右クリックメニューのバインド設定 (隠し名前に頼らない安全版) ---
+        # 1. 一瞬だけダミーのフレームを作ります
+        dummy = ctk.CTkFrame(self.scroll_frame)
+        # 2. CustomTkinterが自動で割り当てた「本物の背景フレーム」を逆引きして捕まえます
+        actual_background_frame = dummy.master
+        # 3. 用が済んだのでダミーは即座に消去します
+        dummy.destroy()
 
-        # 【修正】直接バインド。これで AttributeError は出なくなります。
-        self.scroll_frame.bind("<Button-3>", self.show_context_menu) # Windows用
-        self.scroll_frame.bind("<Button-2>", self.show_context_menu) # Mac用
+        # 4. 捕まえた本物の背景フレームに、右クリックメニューをバインドします
+        actual_background_frame.bind("<Button-3>", self.show_context_menu) # Windows用
+        actual_background_frame.bind("<Button-2>", self.show_context_menu) # Mac用
 
     
+
+
 
     def change_grid_size(self, size_key):
         """1. サイズ設定を切り替えて、描画し直す"""
@@ -642,33 +643,55 @@ class App(ctk.CTk):
         # ここで再描画メソッドを呼び出す
         self.render_projectors()
 
+    
+
+
+
+
     def render_projectors(self):
         """2. カードを現在のサイズ設定で生成し直す"""
-        # 現在のカードをすべて破棄（掃除）
-        for widget in self.scroll_frame.winfo_children():
-            widget.destroy()
+        if not self.projector_cards:
+            return
+
+        # 1. 現在画面にあるカードから、(ip, name) データを一時退避
+        old_devices = []
+        for c in self.projector_cards:
+            old_devices.append({"ip": c.ip, "name": c.name})
+
+        # 2. 【重要修正】土台（キャンバス）を巻き添えにしないよう、管理リストのカードだけを削除
+        for card in self.projector_cards:
+            if card.winfo_exists():
+                card.destroy()
         
-        self.projector_cards = {} # 管理辞書をリセット
-        
+        # 3. 管理リストを一度空にする
+        self.projector_cards = []
+        self.registered_ips = []
+
         # 現在のサイズ設定を取得
         config = self.grid_configs[self.current_size]
-        
-        # 横に何個並べるか（小なら多く、大なら少なく）
-        # 固定（例：3列）でも良いですが、計算するとより綺麗です
-        cols = 4 if self.current_size == "small" else (3 if self.current_size == "medium" else 2)
 
-        for i, (ip, data) in enumerate(self.projectors.items()):
-            # ProjectorCard側にサイズを渡す（※Cardクラスの修正が必要です）
-            card = ProjectorCard(
-                self.scroll_frame,
-                ip=ip,
-                data=data,
-                width=config["width"],
-                height=config["height"],
-                font_size=config["font_size"]
-            )
-            card.grid(row=i // cols, column=i % cols, padx=config["padding"], pady=config["padding"])
-            self.projector_cards[ip] = card
+        # 4. 退避したデータから、新しいサイズでカードを再生成
+        for dev in old_devices:
+            if dev["ip"] == "spacer":
+                card = SpacerCard(self.scroll_frame, delete_cb=self.remove_projector)
+                card.configure(width=config["width"], height=config["height"])
+                self.projector_cards.append(card)
+            else:
+                self.add_projector(dev["ip"], dev["name"], save=False)
+        
+        # 5. 現在のウィンドウ幅に合わせて列数を再計算
+        current_width = self.scroll_frame.winfo_width()
+        self.current_columns = max(1, current_width // config["col_width"])
+        
+        # 列数のグリッドウェイトをリセットして再設定
+        for i in range(20):
+            self.scroll_frame.grid_columnconfigure(i, weight=0)
+        for i in range(self.current_columns):
+            self.scroll_frame.grid_columnconfigure(i, weight=1)
+
+        # 再配置を実行
+        self.rearrange_grid()
+
 
 
 
@@ -681,10 +704,6 @@ class App(ctk.CTk):
         # 右クリックした位置にメニューを表示
         self.context_menu.post(event.x_root, event.y_root)
 
-    def change_grid_size(self, size_key):
-        print(f"サイズを {size_key} に変更します（まだ見た目は変わりません）")
-        self.current_size = size_key
-        # ここで本来は「再描画(ステップ4)」を呼び出す
 
 
 
@@ -920,12 +939,13 @@ class App(ctk.CTk):
         # 内部フレームのサイズを再計算させる「おまじない」
         self.scroll_frame._parent_canvas.configure(scrollregion=self.scroll_frame._parent_canvas.bbox("all"))
             
-    # --- 自動リサイズ処理 ---
+   # --- 自動リサイズ処理 ---
     def on_frame_resize(self, event):
-        # フレームの幅から列数を計算（カード幅120px + 余白 = 約170px と想定）
-        new_columns = max(1, event.width // 170)
+        # 現在のサイズに応じた列幅を取得して計算
+        config = self.grid_configs[self.current_size]
+        new_columns = max(1, event.width // config["col_width"])
         
-        # 列数が変わった時だけ再配置を実行する（処理を軽くするため）
+        # 列数が変わった時だけ再配置を実行する
         if self.current_columns != new_columns:
             self.current_columns = new_columns
             
@@ -1004,7 +1024,22 @@ class App(ctk.CTk):
 
     def add_projector(self, ip, name, save=True):
         if ip in self.registered_ips: return 
-        card = ProjectorCard(self.scroll_frame, ip, name, icons=self.icons, rename_cb=self.save_devices, delete_cb=self.remove_projector)
+        
+        # 現在のサイズ設定を取得
+        config = self.grid_configs[self.current_size]
+        
+        # ProjectorCardに動的なサイズを渡すように変更
+        card = ProjectorCard(
+            self.scroll_frame, 
+            ip, 
+            name, 
+            icons=self.icons, 
+            rename_cb=self.save_devices, 
+            delete_cb=self.remove_projector,
+            width=config["width"],
+            height=config["height"],
+            font_size=config["font_size"]
+        )
         self.registered_ips.append(ip); self.projector_cards.append(card)
         self.rearrange_grid()
         if save: self.save_devices()
