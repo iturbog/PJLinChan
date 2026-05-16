@@ -11,12 +11,14 @@ import threading
 import sys # sysのインポートが必要です
 import webbrowser
 
-VERSION = "0.6a"
+VERSION = "0.6b"
 
 
 
-# pyinstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.6a" --icon="image/icon.ico" --add-data "image;image" main.py
+# pyinstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.6b" --icon="image/icon.ico" --add-data "image;image" main.py
 # python -m PyInstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.6a" --icon="image/icon.ico" --add-data "image;image" main.py
+#
+# pip install pyinstaller
 #
 # python -m venv .venv
 # Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
@@ -393,7 +395,7 @@ class App(ctk.CTk):
         self.start_remote_listeners()
 
         # PJアイコン
-        icon_size = (80, 60)
+        icon_size = (60, 45)
         self.icons = {
             "offline": load_or_create_dummy_image("image/icon_offline.png", icon_size),
             "power_off": load_or_create_dummy_image("image/icon_power_off.png", icon_size),
@@ -406,11 +408,12 @@ class App(ctk.CTk):
 
         # --- UI作成の前に、グリッドサイズの設定を追加 ---
         self.grid_configs = {
-            "small":  {"width": 160, "height": 110, "font_size": 10, "padding": 5, "col_width": 175},
-            "medium": {"width": 230, "height": 150, "font_size": 12, "padding": 8, "col_width": 245},
-            "large":  {"width": 300, "height": 180, "font_size": 14, "padding": 10, "col_width": 320}
+            # ▼ "small" を今回の「間を広げたコンパクト版」にカスタム！
+            "small":  {"width": 80, "height": 130, "font_size": 12, "padding": 10, "col_width": 100},
+            "medium": {"width": 150, "height": 195, "font_size": 14, "padding": 10, "col_width": 170},
+            "large":  {"width": 200, "height": 260, "font_size": 16, "padding": 10, "col_width": 220}
         }
-        self.current_size = "large" # 初期値は大
+        self.current_size = "small" # 初期値は大のまま
 
 
 
@@ -620,32 +623,46 @@ class App(ctk.CTk):
     
 
 
-        
-        # --- 右クリックメニューのバインド設定 (隠し名前に頼らない安全版) ---
-        # 1. 一瞬だけダミーのフレームを作ります
-        dummy = ctk.CTkFrame(self.scroll_frame)
-        # 2. CustomTkinterが自動で割り当てた「本物の背景フレーム」を逆引きして捕まえます
-        actual_background_frame = dummy.master
-        # 3. 用が済んだのでダミーは即座に消去します
-        dummy.destroy()
 
-        # 4. 捕まえた本物の背景フレームに、右クリックメニューをバインドします
-        actual_background_frame.bind("<Button-3>", self.show_context_menu) # Windows用
-        actual_background_frame.bind("<Button-2>", self.show_context_menu) # Mac用
+
+
+        
+        # --- 右クリックメニューの設定 (__init__内) ---
+        self.context_menu = tk.Menu(self, tearoff=0, font=("Arial", 12))
+        self.context_menu.add_command(label="サイズ：小", command=lambda: self.change_grid_size("small"))
+        self.context_menu.add_command(label="サイズ：中", command=lambda: self.change_grid_size("medium"))
+        self.context_menu.add_command(label="サイズ：大", command=lambda: self.change_grid_size("large"))
+
+        # 【最終修正】エラーを完全に防ぎつつ、背景の全レイヤーに「ボタンを離した時」のイベントを張る
+        bg_widgets = [
+            self.scroll_frame, 
+            getattr(self.scroll_frame, "_parent_canvas", None), 
+            getattr(self.scroll_frame, "_parent_frame", None)
+        ]
+        
+        for w in bg_widgets:
+            if w:  # 存在するパーツにだけバインドする（これでAttributeErrorは絶対に出ません）
+                w.bind("<ButtonRelease-3>", self.show_context_menu) # Windows用
+                w.bind("<ButtonRelease-2>", self.show_context_menu) # Mac用
+
+
+
+
 
     
 
 
 
     def change_grid_size(self, size_key):
-        """1. サイズ設定を切り替えて、描画し直す"""
+        # サイズを更新して、メインエリアを再描画する
         self.current_size = size_key
-        # ここで再描画メソッドを呼び出す
         self.render_projectors()
 
+
+
+
+
     
-
-
 
 
     def render_projectors(self):
@@ -697,12 +714,11 @@ class App(ctk.CTk):
 
 
 
-
-
-
     def show_context_menu(self, event):
-        # 右クリックした位置にメニューを表示
-        self.context_menu.post(event.x_root, event.y_root)
+        # 【修正】post()ではなく、他のカードと同じ tk_popup() を使います
+        self.context_menu.tk_popup(event.x_root, event.y_root)
+
+
 
 
 
