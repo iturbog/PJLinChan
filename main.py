@@ -11,7 +11,7 @@ import threading
 import sys # sysのインポートが必要です
 import webbrowser
 
-VERSION = "0.5"
+VERSION = "0.6a"
 
 
 
@@ -128,8 +128,27 @@ class SpacerCard(ctk.CTkFrame):
 
 class ProjectorCard(ctk.CTkFrame):
     """プロジェクター1台分の操作パネル"""
-    def __init__(self, master, ip, name, icons, password=None, rename_cb=None, delete_cb=None):
-        super().__init__(master)
+    # すべての新しい引数（data, width, height, font_size）にデフォルト値を設定して後ろに配置します
+    def __init__(self, master, ip, name=None, icons=None, password=None, rename_cb=None, delete_cb=None, 
+                 data=None, width=300, height=180, font_size=15, **kwargs):
+        
+        # 1. 親クラス（Frame）に動的なサイズを渡す
+        super().__init__(master, width=width, height=height, **kwargs)
+        
+        # 勝手に枠が縮まないように固定する設定
+        self.grid_propagate(False)
+        self.pack_propagate(False)
+
+        # 2. 表示する名前の決定（dataがあればそこから取り出し、無ければname引数を使う）
+        display_name = data["name"] if data else name
+
+        # 3. ラベルの作成（受け取った font_size を適用）
+        self.name_label = ctk.CTkLabel(self, text=display_name, font=("Arial", font_size, "bold"))
+        self.name_label.pack(pady=5)
+
+
+    
+        super().__init__(master, width=width, height=height, **kwargs)
         self.ip = ip
         self.name = name
         self.password = password
@@ -158,6 +177,10 @@ class ProjectorCard(ctk.CTkFrame):
                                   font=("Arial", 12, "bold"), justify="center", cursor="hand2")
         self.label.pack(pady=(0, 5))
 
+
+        
+
+
         # --- 1. 管理メニュー (アイコン右クリック用) ---
         self.context_menu = tk.Menu(self, tearoff=0, font=("Arial", 14))
         self.context_menu.add_command(label="🌐 Web Access", command=self.open_web_control)
@@ -177,6 +200,8 @@ class ProjectorCard(ctk.CTkFrame):
         self.input_menu.add_command(label="SDI (Digi 3)", command=lambda: self.set_input_source("DIGITAL", 3))
         self.input_menu.add_separator()
         self.input_menu.add_command(label="VGA (RGB 1)", command=lambda: self.set_input_source("RGB", 1))
+
+
 
         # --- ★マウスバインドの最終整理★ ---
         
@@ -304,8 +329,12 @@ class ManualSortDialog(ctk.CTkToplevel):
         
         self.temp_list = list(cards)
         self.applied = False
+
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
+        self.grid_propagate(False) 
+        self.pack_propagate(False)
+
 
         ctk.CTkLabel(self, text="ボタンで順序を入れ替えてください。", font=("Arial", 11)).grid(row=0, column=0, pady=5)
 
@@ -589,24 +618,64 @@ class App(ctk.CTk):
                 pass
 
     
-        # 1. サイズ設定の定義
-        self.grid_configs = {
-            "small":  {"width": 160, "height": 100, "font_size": 11, "padding": 5},
-            "medium": {"width": 220, "height": 140, "font_size": 13, "padding": 8},
-            "large":  {"width": 300, "height": 180, "font_size": 15, "padding": 10}
-        }
-        self.current_size = "large" 
 
-        # 2. 右クリックメニュー（コンテキストメニュー）の作成
+
+
+    
+
+        
+        # --- 右クリックメニューの設定 (__init__内) ---
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="サイズ：小", command=lambda: self.change_grid_size("small"))
         self.context_menu.add_command(label="サイズ：中", command=lambda: self.change_grid_size("medium"))
         self.context_menu.add_command(label="サイズ：大", command=lambda: self.change_grid_size("large"))
 
-        # 3. 右クリックイベントのバインド
-        # スクロールフレームの「中身のキャンバス」にバインドするのが一番確実です
-        self.scroll_frame._canvas.bind("<Button-3>", self.show_context_menu)
-        self.scroll_frame._canvas.bind("<Button-2>", self.show_context_menu)
+        # 【修正】直接バインド。これで AttributeError は出なくなります。
+        self.scroll_frame.bind("<Button-3>", self.show_context_menu) # Windows用
+        self.scroll_frame.bind("<Button-2>", self.show_context_menu) # Mac用
+
+    
+
+    def change_grid_size(self, size_key):
+        """1. サイズ設定を切り替えて、描画し直す"""
+        self.current_size = size_key
+        # ここで再描画メソッドを呼び出す
+        self.render_projectors()
+
+    def render_projectors(self):
+        """2. カードを現在のサイズ設定で生成し直す"""
+        # 現在のカードをすべて破棄（掃除）
+        for widget in self.scroll_frame.winfo_children():
+            widget.destroy()
+        
+        self.projector_cards = {} # 管理辞書をリセット
+        
+        # 現在のサイズ設定を取得
+        config = self.grid_configs[self.current_size]
+        
+        # 横に何個並べるか（小なら多く、大なら少なく）
+        # 固定（例：3列）でも良いですが、計算するとより綺麗です
+        cols = 4 if self.current_size == "small" else (3 if self.current_size == "medium" else 2)
+
+        for i, (ip, data) in enumerate(self.projectors.items()):
+            # ProjectorCard側にサイズを渡す（※Cardクラスの修正が必要です）
+            card = ProjectorCard(
+                self.scroll_frame,
+                ip=ip,
+                data=data,
+                width=config["width"],
+                height=config["height"],
+                font_size=config["font_size"]
+            )
+            card.grid(row=i // cols, column=i % cols, padx=config["padding"], pady=config["padding"])
+            self.projector_cards[ip] = card
+
+
+
+
+
+
+
 
     def show_context_menu(self, event):
         # 右クリックした位置にメニューを表示
