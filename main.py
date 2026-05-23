@@ -11,12 +11,13 @@ import threading
 import sys # sysのインポートが必要です
 import webbrowser
 
-VERSION = "0.6d"
+VERSION = "0.7a"
 
 
 
-# python -m PyInstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.6c" --icon="image/icon.ico" --add-data "image;image" main.py
-#
+# python -m PyInstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.7aW" --icon="image/icon.ico" --add-data "image;image" main.py
+# python -m PyInstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.7aM" --icon="image/icon.icns" --add-data "image:image" main.py
+
 # pip install pyinstaller
 #
 # python -m venv .venv
@@ -1146,19 +1147,30 @@ class App(ctk.CTk):
         self.ip_entry.icursor('end')
 
     def _fetch_name_and_add(self, ip):
+        import socket
         name = "不明"
         is_success = False
+        
+        # 一時的に全体の通信タイムアウトを 2秒 に設定する（フリーズ防止）
+        old_timeout = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(2.0)
+        
         try:
-            # タイムアウトを少し短め（2秒）にして、ユーザーを待たせすぎないようにします
-            pj = Projector.from_address(ip, timeout=2.0)
+            # ▼ 修正：timeout=2.0 を削除
+            pj = Projector.from_address(ip)
             pj.authenticate(None)
-            name = pj.get_name() or "Projector"
+            
+            # 先ほどの修正通り、get('NAME') を使う
+            name = pj.get('NAME') or "Projector"
             is_success = True
-        except Exception:
+        except Exception as e:
+            # 原因が分かったので、print部分は残しても消してもOKです
             name = "Manual Device"
             is_success = False
+        finally:
+            # 最後に、タイムアウトの設定を元の状態にきっちり戻す
+            socket.setdefaulttimeout(old_timeout)
 
-        # 直接 add_projector を呼ぶのではなく、成功・失敗の結果を持ってUI更新へ
         self.after(0, lambda: self._handle_add_result(ip, name, is_success))
 
     def _handle_add_result(self, ip, name, is_success):
