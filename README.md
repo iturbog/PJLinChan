@@ -1,6 +1,6 @@
 ### /iturbog/PJLinChan/
 [⇨ リリース/Releases](https://github.com/iturbog/PJLinChan/releases)<br>
-[⇨ 簡易マニュアル](https://github.com/iturbog/PJLinChan/blob/main/manual.md)
+[⇨ 簡易マニュアル](https://github.com/iturbog/PJLinChan/blob/main/docs/manual.md)
 
 # PJリンちゃん PJLinChan
 Projectores Controller via PJLink
@@ -24,10 +24,10 @@ PJ Link 経由でプロジェクターを操作するアプリケーションで
 
 ### DEMO
 v0.2<br>
-<img src="https://github.com/iturbog/PJLinChan/blob/main/SS.png" width="240px">
+<img src="https://github.com/iturbog/PJLinChan/blob/main/docs/SS.png" width="240px">
 
 v0.5<br>
-<img src="https://github.com/iturbog/PJLinChan/blob/main/SS0p5.png" width="240px">
+<img src="https://github.com/iturbog/PJLinChan/blob/main/docs/SS0p5.png" width="240px">
 
 ### Features
 ### Requirement
