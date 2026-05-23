@@ -1,4 +1,6 @@
 ### /iturbog/PJLinChan/
+[⇨ リリース/Releases](https://github.com/iturbog/PJLinChan/releases)<br>
+[⇨ 簡易マニュアル](https://github.com/iturbog/PJLinChan/blob/main/manual.md)
 
 # PJリンちゃん PJLinChan
 Projectores Controller via PJLink
@@ -11,7 +13,7 @@ PJ Link 経由でプロジェクターを操作するアプリケーションで
 プロジェクターに対する主な操作
 - 電源の入り切り
 - ミュート（シャッター）のオンオフ
-- 入力切り替え（あまりあてにならない）
+- 入力切り替え（DIGITAL, RGB, NETWORK）
 
 
 おまけ機能
@@ -38,8 +40,7 @@ v0.5<br>
 
 ### Author
 - 作成者		takaSHIKI
-- 所属		Magnux inc.
-- E-mail	takaSHIKI
+- E-mail	
 
 ### License
 
@@ -62,3 +63,11 @@ v0.5<br>
     - 名前順にソート
     - 手動で並べ替え（リスト編集）
       - 空白挿入
+### v0.6<br>
+- 全体的
+  - サイズを切り詰めてコンパクトに
+- プロジェクタアイコン
+  - グリッドサイズを大中小から選択可
+    - デフォルトは小
+### v0.7a<br>
+- macOS版リリース
