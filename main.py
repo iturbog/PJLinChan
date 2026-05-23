@@ -11,7 +11,7 @@ import threading
 import sys # sysのインポートが必要です
 import webbrowser
 
-VERSION = "0.6c"
+VERSION = "0.6d"
 
 
 
@@ -183,11 +183,13 @@ class ProjectorCard(ctk.CTkFrame):
 
         # --- 2. 入力切替メニュー (ラベル右クリック用) ---
         self.input_menu = tk.Menu(self, tearoff=0, font=("Arial", 12))
-        self.input_menu.add_command(label="HDMI 1", command=lambda: self.set_input_source("DIGITAL", 1))
-        self.input_menu.add_command(label="HDMI 2", command=lambda: self.set_input_source("DIGITAL", 2))
-        self.input_menu.add_command(label="SDI (Digi 3)", command=lambda: self.set_input_source("DIGITAL", 3))
+        self.input_menu.add_command(label="DIGITAL 1", command=lambda: self.set_input_source("DIGITAL", 1))
+        self.input_menu.add_command(label="DIGITAL 2", command=lambda: self.set_input_source("DIGITAL", 2))
+        self.input_menu.add_command(label="DIGITAL 3", command=lambda: self.set_input_source("DIGITAL", 3))
         self.input_menu.add_separator()
-        self.input_menu.add_command(label="VGA (RGB 1)", command=lambda: self.set_input_source("RGB", 1))
+        self.input_menu.add_command(label="RGB", command=lambda: self.set_input_source("RGB", 1))
+        self.input_menu.add_separator()
+        self.input_menu.add_command(label="NETWORK", command=lambda: self.set_input_source("NETWORK", 1))
 
         # --- ★マウスバインドの再設定★ ---
         # アイコンを右クリックした時だけ「電源管理メニュー」を出す
@@ -513,7 +515,7 @@ class App(ctk.CTk):
         
         # インプットセレクト
         self.all_input_menu = ctk.CTkOptionMenu(self.sidebar, 
-            values=["HDMI 1", "HDMI 2", "SDI (Digi 3)", "VGA (RGB 1)", "NETWORK"], 
+            values=["DIGITAL 1", "DIGITAL 2", "DIGITAL 3", "RGB", "NETWORK"], 
             height=sb_h,
             command=self.control_all_input)
         self.all_input_menu.set("Input Select")
@@ -601,7 +603,7 @@ class App(ctk.CTk):
          --- [新規] 一括入力切替メニュー ---
          self.all_input_menu = ctk.CTkOptionMenu(
              self.sidebar, 
-             values=["HDMI 1", "HDMI 2", "SDI (Digi 3)", "VGA (RGB 1)", "NETWORK"], 
+             values=["DIGITAL 1", "DIGITAL 2", "DIGITAL 3", "RGB", "NETWORK"], 
              command=self.control_all_input
          )
          self.all_input_menu.set("Input Select")
