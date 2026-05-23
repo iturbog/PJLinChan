@@ -13,8 +13,6 @@ import webbrowser
 
 VERSION = "0.7a"
 
-
-
 # python -m PyInstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.7aW" --icon="image/icon.ico" --add-data "image;image" main.py
 # python -m PyInstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.7aM" --icon="image/icon.icns" --add-data "image:image" main.py
 
@@ -600,17 +598,7 @@ class App(ctk.CTk):
         # キーボード操作を有効化
         self.bind("<Key>", self.handle_keypress)
         
-        """
-         --- [新規] 一括入力切替メニュー ---
-         self.all_input_menu = ctk.CTkOptionMenu(
-             self.sidebar, 
-             values=["DIGITAL 1", "DIGITAL 2", "DIGITAL 3", "RGB", "NETWORK"], 
-             command=self.control_all_input
-         )
-         self.all_input_menu.set("Input Select")
-         self.all_input_menu.grid(row=9, column=0, padx=10, pady=5, sticky="ew") # 位置は既存ボタンの下へ
-        """
-
+        
         # ウィンドウを閉じるボタンが押された時の動作を指定
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         
