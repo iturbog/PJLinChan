@@ -1,5 +1,6 @@
 ### /iturbog/PJLinChan/
-[⇨ リリース/Releases](https://github.com/iturbog/PJLinChan/releases)
+[⇨ リリース/Releases](https://github.com/iturbog/PJLinChan/releases)<br>
+[⇨ 簡易マニュアル](https://github.com/iturbog/PJLinChan/blob/main/manual.md)
 
 # PJリンちゃん PJLinChan
 Projectores Controller via PJLink
