@@ -13,18 +13,6 @@ import webbrowser
 
 VERSION = "0.7a"
 
-# python -m PyInstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.7aW" --icon="image/icon.ico" --add-data "image;image" main.py
-# python -m PyInstaller --collect-all customtkinter --noconsole --onefile --name "PJリンちゃん_v0.7aM" --icon="image/icon.icns" --add-data "image:image" main.py
-
-# pip install pyinstaller
-#
-# python -m venv .venv
-# Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
-# .\.venv\Scripts\Activate.ps1
-# pip install customtkinter pypjlink pillow
-
-
-
 # 1. 実行環境に応じたベースディレクトリの取得
 if getattr(sys, 'frozen', False):
     # EXE化（PyInstaller）されている場合
