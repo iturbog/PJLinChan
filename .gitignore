@@ -36,6 +36,7 @@ Icon?
 
 # 基本
 ignore/
+*.code-workspace
 
 
 # --- アプリ固有のデータ（要注意！） ---
