@@ -11,7 +11,7 @@ import threading
 import sys # sysのインポートが必要です
 import webbrowser
 
-VERSION = "0.72a"
+VERSION = "0.75a"
 
 # 1. 実行環境に応じたベースディレクトリの取得
 if getattr(sys, 'frozen', False):
@@ -25,6 +25,24 @@ else:
 CONFIG_FILE = os.path.join(BASE_DIR, "projectors.json")
 PRESETS_FILE = os.path.join(BASE_DIR, "presets.json")
 SETTINGS_FILE = os.path.join(BASE_DIR, "settings.json")
+
+# --- 多言語化グローバルシステム ---
+_translations = {}
+_current_lang = "ja"
+
+def t_text(key, default=""):
+    """どこからでも呼び出せる文字取得関数"""
+    data = _translations.get(key, default if default else key)
+    if isinstance(data, dict):
+        return data.get("text", key)
+    return data
+
+def t_size(key, default_size=12):
+    """どこからでも呼び出せるサイズ取得関数"""
+    data = _translations.get(key)
+    if isinstance(data, dict) and "size" in data:
+        return data["size"]
+    return default_size
 
 def resource_path(relative_path):
     """ PyInstallerの展開先（一時フォルダ）、または通常のパスを返す """
@@ -61,9 +79,9 @@ def load_or_create_dummy_image(filename, size=(120, 90)):
 
 class RenameDialog(ctk.CTkToplevel):
     """名前変更用のカスタムダイアログ"""
-    def __init__(self, parent, current_name, title_text="名前の変更"):
+    def __init__(self, parent, current_name, title_text=t_text("menu_rename")):
         super().__init__(parent)
-        self.title(title_text)
+        self.title(t_text("title_rename_dialog"))
         self.result = None
         
         parent.update_idletasks()
@@ -76,7 +94,7 @@ class RenameDialog(ctk.CTkToplevel):
         self.transient(parent)
         self.grab_set()
 
-        ctk.CTkLabel(self, text="新しい名前を入力してください:").pack(pady=(15, 5))
+        ctk.CTkLabel(self, text=t_text("prompt_new_name")).pack(pady=(15, 5))
         
         self.entry = ctk.CTkEntry(self, width=200)
         self.entry.pack(pady=5)
@@ -86,9 +104,9 @@ class RenameDialog(ctk.CTkToplevel):
 
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(pady=10)
-        ctk.CTkButton(btn_frame, text="キャンセル", width=80, fg_color="gray", command=self.destroy).pack(side="left", padx=5)
-        ctk.CTkButton(btn_frame, text="OK", width=80, command=self.on_ok).pack(side="left", padx=5)
-        
+        ctk.CTkButton(btn_frame, text=t_text("btn_cancel"), width=80, fg_color="gray", command=self.destroy).pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text=t_text("btn_ok"), width=80, command=self.on_ok).pack(side="left", padx=5)
+
         self.bind("<Return>", lambda event: self.on_ok())
         self.wait_window()
 
@@ -102,7 +120,7 @@ class SpacerCard(ctk.CTkFrame):
     def __init__(self, master, delete_cb=None):
         super().__init__(master, fg_color="transparent", border_width=0)
         self.ip = "spacer" 
-        self.name = "（空白）"
+        self.name = t_text("label_spacer")
         self.delete_cb = delete_cb
         
         # サイズだけ確保
@@ -110,7 +128,7 @@ class SpacerCard(ctk.CTkFrame):
         
         # 右クリックで削除できるように
         self.menu = tk.Menu(self, tearoff=0)
-        self.menu.add_command(label="❌ この空白を削除", command=lambda: self.delete_cb(self))
+        self.menu.add_command(label=t_text("menu_delete_spacer"), command=lambda: self.delete_cb(self))
         self.bind("<ButtonRelease-3>", lambda e: self.menu.tk_popup(e.x_root, e.y_root))
 
 
@@ -158,15 +176,15 @@ class ProjectorCard(ctk.CTkFrame):
 
         # --- 1. 管理メニュー (アイコン右クリック用) ---
         self.context_menu = tk.Menu(self, tearoff=0, font=("Arial", 14))
-        self.context_menu.add_command(label="🌐 Web Access", command=self.open_web_control)
+        self.context_menu.add_command(label=t_text("menu_web_access"), command=self.open_web_control)
         self.context_menu.add_separator()
         
-        self.context_menu.add_command(label="⚡ Power ON", command=lambda: self.control_power("Power ON"))
-        self.context_menu.add_command(label="💤 Power OFF", command=lambda: self.control_power("Power OFF"))
+        self.context_menu.add_command(label=t_text("menu_power_on"), command=lambda: self.control_power("Power ON"))
+        self.context_menu.add_command(label=t_text("menu_power_off"), command=lambda: self.control_power("Power OFF"))
         self.context_menu.add_separator()
         
-        self.context_menu.add_command(label="✏️ 名前の変更", command=self.rename_device)
-        self.context_menu.add_command(label="❌ 削除", command=self.delete_device)
+        self.context_menu.add_command(label=t_text("menu_rename"), command=self.rename_device)
+        self.context_menu.add_command(label=t_text("menu_delete"), command=self.delete_device)
 
         # --- 2. 入力切替メニュー (ラベル右クリック用) ---
         self.input_menu = tk.Menu(self, tearoff=0, font=("Arial", 12))
@@ -227,7 +245,9 @@ class ProjectorCard(ctk.CTkFrame):
             if self.rename_cb: self.rename_cb()
 
     def delete_device(self):
-        if messagebox.askyesno("削除", f"'{self.name}' を削除しますか？"):
+        # 変更後 (.format を使ってJSONの {name} に名前を流し込む)
+        msg = t_text("msg_delete_confirm").format(name=self.name)
+        if messagebox.askyesno(t_text("title_delete"), msg):
             if self.delete_cb: self.delete_cb(self)
 
     def _update_ui_states(self):
@@ -287,7 +307,7 @@ class ProjectorCard(ctk.CTkFrame):
 class ManualSortDialog(ctk.CTkToplevel):
     def __init__(self, parent, cards):
         super().__init__(parent)
-        self.title("手動並び替え・空白挿入")
+        self.title(t_text("title_manual_sort"))
         # self.geometry("450x600")
         
         
@@ -311,8 +331,7 @@ class ManualSortDialog(ctk.CTkToplevel):
         self.grid_propagate(False) 
         self.pack_propagate(False)
 
-
-        ctk.CTkLabel(self, text="ボタンで順序を入れ替えてください。", font=("Arial", 11)).grid(row=0, column=0, pady=5)
+        ctk.CTkLabel(self, text=t_text("prompt_sort"), font=("Arial", 11)).grid(row=0, column=0, pady=5)
 
         self.scroll_frame = ctk.CTkScrollableFrame(self)
         self.scroll_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
@@ -320,9 +339,9 @@ class ManualSortDialog(ctk.CTkToplevel):
         self.btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.btn_frame.grid(row=2, column=0, pady=10)
         
-        ctk.CTkButton(self.btn_frame, text="＋ 空白を挿入", fg_color="#2E7D32", command=self.add_spacer).pack(side="left", padx=5)
-        ctk.CTkButton(self.btn_frame, text="キャンセル", fg_color="gray", command=self.destroy).pack(side="left", padx=5)
-        ctk.CTkButton(self.btn_frame, text="適用して保存", command=self.apply).pack(side="left", padx=5)
+        ctk.CTkButton(self.btn_frame, text=t_text("btn_add_spacer"), font=("Arial", t_size("btn_add_spacer", 12)), fg_color="#2E7D32", command=self.add_spacer).pack(side="left", padx=5)
+        ctk.CTkButton(self.btn_frame, text=t_text("btn_cancel"), font=("Arial", t_size("btn_cancel", 12)), fg_color="gray", command=self.destroy).pack(side="left", padx=5)
+        ctk.CTkButton(self.btn_frame, text=t_text("btn_apply_save"), font=("Arial", t_size("btn_apply_save", 12)), command=self.apply).pack(side="left", padx=5)
 
         self.refresh_list()
         self.grab_set() # 他の操作を無効化
@@ -357,7 +376,7 @@ class ManualSortDialog(ctk.CTkToplevel):
 
     def add_spacer(self):
         # 仮のSpacerオブジェクト（保存時に実体化させるのでここでは最小限）
-        new_spacer = type('obj', (object,), {'ip': 'spacer', 'name': '（空白）'})
+        new_spacer = type('obj', (object,), {'ip': 'spacer', 'name': t_text("label_spacer")})
         self.temp_list.append(new_spacer)
         self.refresh_list()
 
@@ -370,13 +389,17 @@ class ManualSortDialog(ctk.CTkToplevel):
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title(f"PJリンちゃん {VERSION} - PJLink Multi-Controller -")
-        self.geometry("640x480")
+
+        # 1. 現在の言語を設定（初期値はOS判定にするか、とりあえず"ja"で固定）
+        self.preload_language()
+
+        self.title(f"{t_text('app_title')} {VERSION} - PJLink Multi-Controller -")
+        self.geometry("640x500")
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=0)
-
+        
         # --- リモート制御設定 ---
         self.udp_port = 5000
         self.tcp_port = 5001
@@ -412,7 +435,7 @@ class App(ctk.CTk):
         # 0: 管理Label / 1: 操作ロック / 2: IP Entry / 3: btn_frame(追加/探査) / 4: 更新Button / 5: StatusLabel
         # 6: 一括Label / 7: PowerLabel / 8: MuteON / 9: MuteOFF / 10: InputSelect
         # 11: 整列Label / 12: SortMenu
-        # 13: 特別Label / 14: DataMenu / 15: ThemeMenu
+        # 14: 特別Label / 15: DataMenu / 16: ThemeMenu / 17: LanguageMenu
 
         # サイドバーのボタンの高さを統一するための変数
         sa_h = 24
@@ -422,14 +445,15 @@ class App(ctk.CTk):
         self.sidebar.grid(row=0, column=0, rowspan=2, sticky="nsew")
         self.sidebar.grid_rowconfigure(13, weight=1)
                 
-        ctk.CTkLabel(self.sidebar, text="管理", font=("Arial", 14, "bold")).grid(row=0, column=0, padx=5, pady=(8, 2))
+        # ctk.CTkLabel(self.sidebar, text=self.t_text("title_manage"), font=("Arial", 14, "bold")).grid(row=0, column=0, padx=5, pady=(8, 2))
+        ctk.CTkLabel(self.sidebar, text=t_text("title_manage"), font=("Arial", 14, "bold")).grid(row=0, column=0, padx=5, pady=(8, 2))
         
         # ▼ 操作ロック用のスイッチを追加 (初期値はオフ=操作可能)
-        self.lock_switch = ctk.CTkSwitch(self.sidebar, text="操作ロック", command=self.toggle_manual_lock)
+        self.lock_switch = ctk.CTkSwitch(self.sidebar, text=t_text("lock_switch"), command=self.toggle_manual_lock)
         self.lock_switch.grid(row=1, column=0, padx=10, pady=2)
                 
         # IP Entry（作成部分）
-        self.ip_entry = ctk.CTkEntry(self.sidebar, placeholder_text="IP")
+        self.ip_entry = ctk.CTkEntry(self.sidebar, placeholder_text=t_text("placeholder_ip"))
         self.ip_entry.grid(row=2, column=0, padx=10, pady=2, sticky="ew")
         self.ip_entry.bind("<Return>", lambda event: self.add_manual_ip())
         # ▼ これを Entry 作成直後に配置してください
@@ -447,41 +471,40 @@ class App(ctk.CTk):
         btn_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         btn_frame.grid(row=3, column=0, padx=5, pady=8, sticky="ew")
         btn_frame.grid_columnconfigure((0,1), weight=1)
-        ctk.CTkButton(btn_frame, text="追加",height=sa_h, command=self.add_manual_ip, width=40).grid(row=3, column=0, padx=(0,2))
-        self.scan_btn = ctk.CTkButton(btn_frame, text="探査", fg_color="#2E7D32",height=sa_h, command=self.start_scan, width=40)
+        ctk.CTkButton(btn_frame, text=t_text("btn_add"),height=sa_h, command=self.add_manual_ip, width=40).grid(row=3, column=0, padx=(0,2))
+        self.scan_btn = ctk.CTkButton(btn_frame, text=t_text("btn_scan"), fg_color="#2E7D32",height=sa_h, command=self.start_scan, width=40)
         self.scan_btn.grid(row=3, column=1, padx=(2,0))
 
         # 更新
-        self.refresh_all_btn = ctk.CTkButton(self.sidebar, text="🔄 更新", fg_color="#546E7A", height=sa_h, command=self.refresh_all_status)
+        self.refresh_all_btn = ctk.CTkButton(self.sidebar, text=t_text("btn_refresh"), fg_color="#546E7A", height=sa_h, command=self.refresh_all_status)
         self.refresh_all_btn.grid(row=4, column=0, padx=10, pady=2, sticky="ew")
         
         # ステータスラベル
-        self.status_label = ctk.CTkLabel(self.sidebar, text="待機中", text_color="gray", font=("Arial", 11))
+        self.status_label = ctk.CTkLabel(self.sidebar, text=t_text("status_idle"), text_color="gray", font=("Arial", 11))
         self.status_label.grid(row=5, column=0, padx=5, pady=0)
 
         # 一括操作セクション
-        ctk.CTkLabel(self.sidebar, text="一括", height=sb_h, font=("Arial", 14, "bold")).grid(row=6, column=0, padx=5, pady=(5, 2))
+        ctk.CTkLabel(self.sidebar, text=t_text("title_bulk"), height=sb_h, font=("Arial", 14, "bold")).grid(row=6, column=0, padx=5, pady=(5, 2))
 
         # 電源
-        self.power_label = ctk.CTkLabel(self.sidebar, text="Power", 
+        self.power_label = ctk.CTkLabel(self.sidebar, text=t_text("label_power"), 
                                         fg_color="#1f538d", corner_radius=6, height=sb_h,
                                         font=("Arial", 13, "bold"), cursor="hand2")
         self.power_label.grid(row=7, column=0, padx=10, pady=2, sticky="ew")
         
         self.all_power_menu = tk.Menu(self, tearoff=0, font=("Arial", 12))
-        self.all_power_menu.add_command(label="⚡ ALL Power ON", command=lambda: self.control_all_power("Power ON"))
-        self.all_power_menu.add_command(label="💤 ALL Power OFF", command=lambda: self.control_all_power("Power OFF"))
+        self.all_power_menu.add_command(label=t_text("all_menu_power_on"), command=lambda: self.control_all_power("Power ON"))
+        self.all_power_menu.add_command(label=t_text("all_menu_power_off"), command=lambda: self.control_all_power("Power OFF"))
         # self.power_label.bind("<ButtonRelease-1>", lambda e: self.all_power_menu.tk_popup(e.x_root, e.y_root))
         # self.power_label.bind("<ButtonRelease-1>", lambda e: (self.focus_set(), self.all_power_menu.tk_popup(e.x_root, e.y_root)))
 
-        # 修正後
         self.power_label.bind("<ButtonRelease-1>", self.show_all_power_menu)
 
         # ミュート            
         # Mute ONボタン
         self.btn_mute_on = ctk.CTkButton(
             self.sidebar, 
-            text="Mute ON", 
+            text=t_text("btn_mute_on"), 
             fg_color="#C62828", 
             height=sb_h,
             command=lambda: self.control_all_mute(True)  # bindではなくcommandを使う
@@ -491,7 +514,7 @@ class App(ctk.CTk):
         # Mute OFFボタン
         self.btn_mute_off = ctk.CTkButton(
             self.sidebar, 
-            text="Mute OFF", 
+            text=t_text("btn_mute_off"), 
             fg_color="gray", 
             height=sb_h,
             command=lambda: self.control_all_mute(False) # commandを使う
@@ -505,30 +528,46 @@ class App(ctk.CTk):
             values=["DIGITAL 1", "DIGITAL 2", "DIGITAL 3", "RGB", "NETWORK"], 
             height=sb_h,
             command=self.control_all_input)
-        self.all_input_menu.set("Input Select")
+        self.all_input_menu.set(t_text("menu_input_select"))
         self.all_input_menu.grid(row=10, column=0, padx=10, pady=2, sticky="ew")
 
         # 整列セクション
-        ctk.CTkLabel(self.sidebar, text="整列", font=("Arial", 14, "bold")).grid(row=11, column=0, padx=5, pady=(5, 0))
-        self.sort_menu = ctk.CTkOptionMenu(self.sidebar, values=["IPアドレス順", "名前順", "手動設定..."], 
-            height=sb_h,
-            command=self.handle_sort_menu)
-        self.sort_menu.set("ソート")
+        ctk.CTkLabel(self.sidebar, text=t_text("title_sort"), font=("Arial", 14, "bold")).grid(row=11, column=0, padx=5, pady=(5, 0))
+        self.sort_menu = ctk.CTkOptionMenu(
+        self.sidebar, 
+        values=_translations.get("sort_options", ["IP Order", "Name Order", "Manual..."]), 
+        height=sb_h,
+        command=self.handle_sort_menu
+)
+        self.sort_menu.set(t_text("menu_sort"))
         self.sort_menu.grid(row=12, column=0, padx=10, pady=2, sticky="ew")
 
         # データ・設定セクション
-        ctk.CTkLabel(self.sidebar, text="特別", font=("Arial", 14, "bold")).grid(row=14, column=0, padx=5, pady=(5, 0))
-        self.manage_menu = ctk.CTkOptionMenu(self.sidebar, values=["手動で保存", "データ初期化…"], 
+        ctk.CTkLabel(self.sidebar, text=t_text("title_special"), font=("Arial", 14, "bold")).grid(row=14, column=0, padx=5, pady=(5, 0))
+        self.manage_menu = ctk.CTkOptionMenu(
+            self.sidebar, 
+            values=_translations.get("data_options", ["Save Manually", "Initialize Data…"]), 
             height=sb_h,
-            command=self.handle_manage_menu)
-        self.manage_menu.set("データ")
+            command=self.handle_manage_menu
+        )
+        self.manage_menu.set(t_text("menu_data"))
         self.manage_menu.grid(row=15, column=0, padx=10, pady=(0, 2), sticky="ew")
 
-        self.theme_menu = ctk.CTkOptionMenu(self.sidebar, values=["ライトモード", "ダークモード"], 
+        self.theme_menu = ctk.CTkOptionMenu(
+            self.sidebar, 
+            values=_translations.get("theme_options", ["Light Mode", "Dark Mode"]), 
             height=sb_h,
-            command=self.change_theme)
-        self.theme_menu.set("テーマ")
+            command=self.change_theme
+        )
+        self.theme_menu.set(t_text("menu_theme"))
         self.theme_menu.grid(row=16, column=0, padx=10, pady=(0, 10), sticky="ew")
+
+        # 言語切り替えメニュー
+        self.lang_menu = ctk.CTkOptionMenu(self.sidebar, values=["日本語", "English"], 
+            height=sb_h,
+            command=self.change_language_setting)
+        self.lang_menu.set(t_text("menu_lang"))
+        self.lang_menu.grid(row=17, column=0, padx=10, pady=(0, 10), sticky="ew")
 
         # -----------------------------------
         # 2. メインエリア
@@ -549,7 +588,7 @@ class App(ctk.CTk):
         for i in range(5):
             self.preset_frame.grid_columnconfigure(i, weight=1)
         
-        ctk.CTkLabel(self.preset_frame, text="PRESETS (1-5 / 6-0):", font=("Arial", 12, "bold")).grid(row=0, column=0, columnspan=5, pady=2)
+        ctk.CTkLabel(self.preset_frame, text=t_text("label_presets"), font=("Arial", 12, "bold")).grid(row=0, column=0, columnspan=5, pady=2)
 
         self.preset_buttons = {}
         self.presets_data = {} 
@@ -559,8 +598,8 @@ class App(ctk.CTk):
             col_idx = (i - 1) % 5
             
             p_menu = tk.Menu(self, tearoff=0, font=("Arial", 14))
-            p_menu.add_command(label="✏️ 名前の変更", command=lambda num=i: self.rename_preset(num))
-            p_menu.add_command(label="❌ 登録を解除", command=lambda num=i: self.clear_preset(num))
+            p_menu.add_command(label=t_text("menu_rename"), command=lambda num=i: self.rename_preset(num))
+            p_menu.add_command(label=t_text("menu_delete"), command=lambda num=i: self.clear_preset(num))
             
             # ボタン作成は1回だけ！
             btn = ctk.CTkButton(self.preset_frame, text=f"Preset {i}", height=35, fg_color="transparent", border_width=1)
@@ -614,9 +653,9 @@ class App(ctk.CTk):
         
         # --- 右クリックメニューの設定 (__init__内) ---
         self.context_menu = tk.Menu(self, tearoff=0, font=("Arial", 12))
-        self.context_menu.add_command(label="サイズ：小", command=lambda: self.change_grid_size("small"))
-        self.context_menu.add_command(label="サイズ：中", command=lambda: self.change_grid_size("medium"))
-        self.context_menu.add_command(label="サイズ：大", command=lambda: self.change_grid_size("large"))
+        self.context_menu.add_command(label=t_text("menu_size_small"), command=lambda: self.change_grid_size("small"))
+        self.context_menu.add_command(label=t_text("menu_size_medium"), command=lambda: self.change_grid_size("medium"))
+        self.context_menu.add_command(label=t_text("menu_size_large"), command=lambda: self.change_grid_size("large"))
 
         # 【最終修正】エラーを完全に防ぎつつ、背景の全レイヤーに「ボタンを離した時」のイベントを張る
         bg_widgets = [
@@ -735,61 +774,59 @@ class App(ctk.CTk):
         self.focus_set()
         if not self.projector_cards: return
 
-        if choice == "IPアドレス順":
-            # 空白(spacer)は一番後ろ[999...]に、それ以外はIPの数値順に
+        # 追加: JSONから選択肢を取得
+        options = _translations.get("sort_options", [])
+
+        if choice == options[0]: # IPアドレス順
             self.projector_cards.sort(key=lambda x: [int(part) for part in x.ip.split('.') if part.isdigit()] if x.ip != "spacer" else [999, 999, 999, 999])
             self.rearrange_grid()
             self.save_devices()
-        elif choice == "名前順":
-            # 空白は一番後ろ("zzz")に、それ以外は名前順に
+        elif choice == options[1]: # 名前順
             self.projector_cards.sort(key=lambda x: x.name.lower() if x.ip != "spacer" else "zzzzzz")
             self.rearrange_grid()
             self.save_devices()
-        elif choice == "手動設定...":
-            # ここでエラーが起きるのを防ぐため、確実に呼び出す
+        elif choice == options[2]: # 手動設定
             self.open_manual_sort_dialog()
         
-        self.sort_menu.set("ソート")
-
+        self.sort_menu.set(t_text("menu_sort"))
 
     def load_settings(self):
-        theme = "ライトモード"
-        last_prefix = self.get_local_prefix() # デフォルトは自動取得
+        theme = "Light"  # デフォルト値
+        last_prefix = self.get_local_prefix()
         
         if os.path.exists(SETTINGS_FILE):
             try:
                 with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
                     s = json.load(f)
-                    theme = s.get("theme", "ライトモード")
+                    theme = s.get("theme", "Light") # "Dark" または "Light" を取得
                     last_prefix = s.get("last_prefix", last_prefix)
                     geo = s.get("geometry")
                     if geo: self.geometry(geo)
             except: pass
         
-        self.change_theme(theme, save=False)
-        self.theme_menu.set("テーマ")
+        # 保存されていたテーマコードを直接適応
+        ctk.set_appearance_mode(theme)
+        self.theme_menu.set(t_text("menu_theme"))
         
-        # 保存されていたプレフィックスを入力欄にセット
         self.ip_entry.delete(0, 'end')
         self.ip_entry.insert(0, last_prefix)
 
     def save_current_settings(self, theme_choice=None):
         if theme_choice is None:
-            # ▼ 修正：メニューの文字ではなく、現在の実際のモード（Light/Dark）を取得して判定する
-            current_mode = ctk.get_appearance_mode()
-            theme_choice = "ダークモード" if current_mode == "Dark" else "ライトモード"
-            
-        # 現在入力欄にあるプレフィックスも取得
+            # アプリを閉じる時は、CustomTkinterの現在の状態（"Dark" または "Light"）をそのまま使う
+            theme_choice = ctk.get_appearance_mode()
+        
         current_ip_text = self.ip_entry.get().strip()
-        prefix = "192.168.0." # デフォルト
+        prefix = "192.168.0."
 
         if "." in current_ip_text:
             prefix = ".".join(current_ip_text.split(".")[:-1]) + "."
 
         settings = {
-            "theme": theme_choice,
+            "theme": theme_choice,     # ここに "Dark" または "Light" が綺麗に入ります
             "geometry": self.geometry(),
-            "last_prefix": prefix  # プレフィックスを保存対象に追加
+            "last_prefix": prefix,
+            "lang": _current_lang      # 前回のグローバル変数化もここに適用！
         }
         try:
             with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
@@ -798,16 +835,24 @@ class App(ctk.CTk):
 
     def change_theme(self, choice, save=True):
         self.focus_set()
-        if choice == "ダークモード":
-            ctk.set_appearance_mode("Dark")
+        
+        # JSONから現在の言語の選択肢（["ライトモード", "ダークモード"] など）を取得
+        options = _translations.get("theme_options", ["Light Mode", "Dark Mode"])
+        
+        # 配列の1番目（ダークモード / Dark Mode）が選ばれたかどうかでカチッと判定
+        if choice == options[1]:
+            mode = "Dark"
         else:
-            ctk.set_appearance_mode("Light")
+            mode = "Light"
+            
+        ctk.set_appearance_mode(mode)
         
         if save:
-            self.save_current_settings(choice)
+            # 設定ファイルには表示文字ではなく、共通コード "Dark" / "Light" を保存する
+            self.save_current_settings(mode)
             
-        # ▼ これを追加：選択が終わったら表示をリセット
-        self.theme_menu.set("テーマ")
+        # メニューのタイトルを「テーマ / Theme」に戻す（ここも多言語化）
+        self.theme_menu.set(t_text("menu_theme"))
 
     def rename_preset(self, num):
         num_str = str(num)
@@ -826,7 +871,7 @@ class App(ctk.CTk):
                   for card in self.projector_cards if card.is_targeted.get()}
         
         if not p_data:
-            messagebox.showwarning("登録失敗", "対象(Target)にチェックが入っているプロジェクターがありません。")
+            messagebox.showwarning(t_text("title_fail"), t_text("msg_fail_target"))
             return
 
         # --- 上書きを確実にするための処理 ---
@@ -953,15 +998,29 @@ class App(ctk.CTk):
 
     def handle_manage_menu(self, choice):
         self.focus_set()
-        if choice == "手動で保存":
+        
+        # 言語ファイル（JSON）から選択肢のリストを丸ごと取得
+        options = _translations.get("data_options", ["Save Manually", "Initialize Data…"])
+        
+        # -----------------------------------------------
+        # 1. 「手動で保存」 (0番目) が選ばれた場合
+        # -----------------------------------------------
+        if choice == options[0]:
             self.save_devices()
             self._save_presets_to_file()
             self.save_current_settings()
-            self.status_label.configure(text="保存完了")
+            # 「保存完了」を多言語化
+            self.status_label.configure(text=t_text("status_saved"))
             
-        elif choice == "データ初期化…":
-            # parent=selfを追加することで、メインウインドウの中央に出るようになります
-            if messagebox.askyesno("警告", "すべてのプロジェクターとプリセットを消去します。\n本当によろしいですか？", parent=self):
+        # -----------------------------------------------
+        # 2. 「データ初期化…」 (1番目) が選ばれた場合
+        # -----------------------------------------------
+        elif choice == options[1]:
+            # ポップアップのタイトル（警告）とメッセージ（全消去の確認）を多言語化
+            title_text = t_text("title_warning")
+            confirm_msg = t_text("msg_clear_all_confirm")
+            
+            if messagebox.askyesno(title_text, confirm_msg, parent=self):
                 for card in self.projector_cards:
                     card.destroy()
                 self.projector_cards.clear()
@@ -980,10 +1039,13 @@ class App(ctk.CTk):
                 new_prefix = self.get_local_prefix()
                 self.ip_entry.insert(0, new_prefix)
                 
-                self.status_label.configure(text="初期化しました")
+                # 「初期化しました」を多言語化
+                self.status_label.configure(text=t_text("status_initialized"))
 
-        # 5. メニューの表示を「データ」に戻す
-        self.manage_menu.set("データ")
+        # -----------------------------------------------
+        # 3. メニューの表示を元の「データ」という文字に戻す
+        # -----------------------------------------------
+        self.manage_menu.set(t_text("menu_data"))
 
     # ▼ 追加：終了時に呼ばれる関数
     def on_closing(self):
@@ -1013,7 +1075,7 @@ class App(ctk.CTk):
             if hasattr(card, "ip") and card.ip != "spacer":
                 threading.Thread(target=card.fetch_status, daemon=True).start()
         
-        self.after(3000, lambda: self.status_label.configure(text="更新完了"))
+        self.after(3000, lambda: self.status_label.configure(text=t_text("status_refresh_done")))
 
     def add_projector(self, ip, name, save=True):
         if ip in self.registered_ips: return 
@@ -1094,7 +1156,11 @@ class App(ctk.CTk):
 
         if not is_valid:
             import tkinter.messagebox as messagebox
-            messagebox.showerror("入力エラー", f"'{ip}' は正しいIPアドレスではありません。\n(例: 192.168.0.10)", parent=self)
+            messagebox.showerror(
+                t_text("title_input_error"), 
+                t_text("msg_ip_error").format(ip=ip), 
+                parent=self
+            )
             # エラーの時は、打ち直ししやすいように入力欄にフォーカスを戻して終了
             self.after(50, lambda: (self.ip_entry.focus_set(), self.ip_entry.icursor('end')))
             return
@@ -1124,7 +1190,7 @@ class App(ctk.CTk):
 
     def _fetch_name_and_add(self, ip):
         import socket
-        name = "不明"
+        name = t_text("status_unknown")
         is_success = False
         
         # 一時的に全体の通信タイムアウトを 2秒 に設定する（フリーズ防止）
@@ -1141,7 +1207,7 @@ class App(ctk.CTk):
             is_success = True
         except Exception as e:
             # 原因が分かったので、print部分は残しても消してもOKです
-            name = "Manual Device"
+            name = t_text("status_manual_device")
             is_success = False
         finally:
             # 最後に、タイムアウトの設定を元の状態にきっちり戻す
@@ -1155,9 +1221,10 @@ class App(ctk.CTk):
         
         if is_success:
             self.status_label.configure(text=f"'{name}' を追加しました", text_color="gray")
+            self.status_label.configure(text=t_text("msg_added").format(name=name), text_color="gray")
         else:
             # 応答がなかった場合はオレンジ色などで警告っぽく表示
-            self.status_label.configure(text="応答なし: 手動追加しました", text_color="#E64A19")
+            self.status_label.configure(text=t_text("msg_no_response"), text_color="#E64A19")
             # 3秒後に文字色を標準（gray）に戻す
             self.after(3000, lambda: self.status_label.configure(text_color="gray"))
 
@@ -1169,8 +1236,8 @@ class App(ctk.CTk):
         # ▼ すでに探査中ならキャンセル処理をして終了する
         if self.is_scanning:
             self.cancel_scan = True
-            self.scan_btn.configure(text="停止中", state="disabled")
-            self.status_label.configure(text="キャンセル処理中...")
+            self.scan_btn.configure(text=t_text("btn_scan_stopping"), state="disabled")
+            self.status_label.configure(text=t_text("status_canceling"))
             return
 
         # ▼ ここから通常の探査開始処理
@@ -1181,8 +1248,8 @@ class App(ctk.CTk):
         self.lock_switch.configure(state="disabled")
         
         # 探査ボタンだけは「キャンセルボタン」として押せるように復活させる！
-        self.scan_btn.configure(state="normal", text="中止", fg_color="#C62828")
-        self.status_label.configure(text="探査中...") 
+        self.scan_btn.configure(state="normal", text=t_text("btn_scan_stop"), fg_color="#C62828")
+        self.status_label.configure(text=t_text("status_scanning")) 
         
         threading.Thread(target=self._scan_network, daemon=True).start()
 
@@ -1213,14 +1280,14 @@ class App(ctk.CTk):
             self.set_sidebar_state("normal")
             
         # ボタンの見た目を「探査」に戻す
-        self.scan_btn.configure(state="normal", text="探査", fg_color="#2E7D32")
+        self.scan_btn.configure(state="normal", text=t_text("btn_scan"), fg_color="#2E7D32")
         
         # キャンセルされたか、完走したかでステータス表示を分ける
         if self.cancel_scan:
-            self.status_label.configure(text="探査を中断しました")
+            self.status_label.configure(text=t_text("status_scan_canceled"))
             self.cancel_scan = False
         else:
-            self.status_label.configure(text=f"{len(found)}台発見")
+            self.status_label.configure(text=t_text("status_scan_done"))
             for ip in found: threading.Thread(target=self._fetch_name_and_add, args=(ip,), daemon=True).start()
 
 
@@ -1253,13 +1320,13 @@ class App(ctk.CTk):
             
             self.rearrange_grid()
             self.save_devices()
-            self.status_label.configure(text="並び替えを適用しました")
+            self.status_label.configure(text=t_text("status_sort_applied"))
 
     def control_all_power(self, command):
         if command == "Power ON":
-            self.power_label.configure(fg_color="#28a745", text="⚡ Power: ON")
+            self.power_label.configure(fg_color="#28a745", text=t_text("menu_power_on"))
         else:
-            self.power_label.configure(fg_color="#dc3545", text="💤 Power: OFF")
+            self.power_label.configure(fg_color="#dc3545", text=t_text("menu_power_off"))
 
         for card in self.projector_cards:
             # 空白カードはスキップ
@@ -1339,10 +1406,10 @@ class App(ctk.CTk):
         """スイッチの状態でサイドバーをロック/解除"""
         if self.lock_switch.get() == 1:
             self.set_sidebar_state("disabled")
-            self.status_label.configure(text="操作ロック中", text_color="#FF5252")
+            self.status_label.configure(text=t_text("status_locked"), text_color="#FF5252")
         else:
             self.set_sidebar_state("normal")
-            self.status_label.configure(text="待機中", text_color="gray")
+            self.status_label.configure(text=t_text("status_idle"), text_color="gray")
 
     def set_sidebar_state(self, state="normal"):
         """一括切り替え（ラベルのバインド解除も考慮）"""
@@ -1358,7 +1425,61 @@ class App(ctk.CTk):
             self.power_label.configure(cursor="arrow", fg_color="#37474F") # 色を暗くして無効感を出す
         else:
             self.power_label.configure(cursor="hand2", fg_color="#1f538d")
+
+    # 多言語化用2つのメソッド        
+    def preload_language(self):
+        """起動時に設定を読み込み、グローバル翻訳辞書を書き換える"""
+        global _translations, _current_lang
+        
+        if os.path.exists(SETTINGS_FILE):
+            try:
+                with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                    s = json.load(f)
+                    _current_lang = s.get("lang", "ja")
+            except: pass
+        
+        json_path = resource_path(f"locale/{_current_lang}.json")
+        if os.path.exists(json_path):
+            try:
+                with open(json_path, "r", encoding="utf-8") as f:
+                    _translations = json.load(f)
+            except:
+                _translations = {}
+
+    def change_language_setting(self, choice):
+        global _current_lang
+
+        self.focus_set()
+        new_lang = "ja" if choice == "日本語" else "en"
+        
+        if new_lang == _current_lang:
+            return
+
+        _current_lang = new_lang
+
+        # settings.json を読み込んで、言語だけを書き換えて保存
+        settings = {}
+        if os.path.exists(SETTINGS_FILE):
+            try:
+                with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                    settings = json.load(f)
+            except: pass
             
+        settings["lang"] = new_lang
+        
+        try:
+            with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+                json.dump(settings, f, ensure_ascii=False, indent=4)
+        except: pass
+        
+        # ダイアログで通知（ここも一応現在の言語で分岐）
+        messagebox.showinfo(
+        t_text("msg_restart_title"),
+        t_text("msg_restart_text"),
+        parent=self
+        )
+        
+        self.lang_menu.set(t_text("menu_lang"))
 
 if __name__ == "__main__":
     app = App()
