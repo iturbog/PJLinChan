@@ -11,7 +11,7 @@ import threading
 import sys # sysのインポートが必要です
 import webbrowser
 
-VERSION = "0.7a"
+VERSION = "0.72a"
 
 # 1. 実行環境に応じたベースディレクトリの取得
 if getattr(sys, 'frozen', False):
@@ -49,7 +49,7 @@ def load_or_create_dummy_image(filename, size=(120, 90)):
     target_path = resource_path(filename)
     
     try:
-        # filename ではなく target_path を開くように変更
+        # filename ではなく target_path を開く
         img = Image.open(target_path)
         return ctk.CTkImage(light_image=img, dark_image=img, size=size)
     except Exception:
