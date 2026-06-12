@@ -42,6 +42,7 @@
     "title_rename_dialog": "Rename",
     "prompt_new_name": "Enter a new name:",
     "btn_ok": "OK",
+    "btn_restart": "Restart",
     "status_idle": "Idle",
     "status_saved": "Saved",
     "title_warning": "Warning",

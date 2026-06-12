@@ -42,6 +42,7 @@
     "title_rename_dialog": "名前の変更",
     "prompt_new_name": "新しい名前を入力してください:",
     "btn_ok": "OK",
+    "btn_restart": "再起動",
     "status_idle": "待機中",
     "status_saved": "保存完了",
     "title_warning": "警告",

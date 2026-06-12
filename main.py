@@ -9,6 +9,7 @@ import socket
 import threading
  
 import sys # sysのインポートが必要です
+import platform
 import webbrowser
 
 VERSION = "0.75a"
@@ -25,6 +26,10 @@ else:
 CONFIG_FILE = os.path.join(BASE_DIR, "projectors.json")
 PRESETS_FILE = os.path.join(BASE_DIR, "presets.json")
 SETTINGS_FILE = os.path.join(BASE_DIR, "settings.json")
+
+# --- プラットフォーム判定 ---
+# Linux(X11) では ButtonRelease-3 でメニューが即閉じるため Button-3 を使う
+_RIGHT_CLICK = "<Button-3>" if platform.system() == "Linux" else "<ButtonRelease-3>"
 
 # --- 多言語化グローバルシステム ---
 _translations = {}
@@ -76,6 +81,17 @@ def load_or_create_dummy_image(filename, size=(120, 90)):
         # エラー表示用にパスも出しておくとデバッグが楽です
         d.text((5, size[1]//2 - 10), f"Missing:\n{filename}", fill="white")
         return ctk.CTkImage(light_image=img, dark_image=img, size=size)
+
+def load_raw_image(filename, fallback_size=(120, 90)):
+    """PIL Image をそのまま返す（CTkImage に変換しない）"""
+    target_path = resource_path(filename)
+    try:
+        return Image.open(target_path).convert("RGBA")
+    except Exception:
+        img = Image.new('RGBA', fallback_size, (80, 80, 80, 150))
+        d = ImageDraw.Draw(img)
+        d.text((5, fallback_size[1]//2 - 10), f"Missing:\n{filename}", fill="white")
+        return img
 
 class RenameDialog(ctk.CTkToplevel):
     """名前変更用のカスタムダイアログ"""
@@ -129,7 +145,7 @@ class SpacerCard(ctk.CTkFrame):
         # 右クリックで削除できるように
         self.menu = tk.Menu(self, tearoff=0)
         self.menu.add_command(label=t_text("menu_delete_spacer"), command=lambda: self.delete_cb(self))
-        self.bind("<ButtonRelease-3>", lambda e: self.menu.tk_popup(e.x_root, e.y_root))
+        self.bind(_RIGHT_CLICK, lambda e: self.menu.tk_popup(e.x_root, e.y_root))
 
 
 
@@ -137,7 +153,7 @@ class ProjectorCard(ctk.CTkFrame):
     """プロジェクター1台分の操作パネル"""
     # すべての新しい引数（data, width, height, font_size）にデフォルト値を設定して配置
     def __init__(self, master, ip, name=None, icons=None, password=None, rename_cb=None, delete_cb=None, 
-                 data=None, width=300, height=180, font_size=15, **kwargs):
+                 data=None, width=300, height=180, font_size=12, btn_height=55, **kwargs):
         
         # 1. 親クラス（Frame）に動的なサイズを渡す
         super().__init__(master, width=width, height=height, **kwargs)
@@ -159,12 +175,12 @@ class ProjectorCard(ctk.CTkFrame):
         # --- UI配置 ---
         self.is_targeted = ctk.BooleanVar(value=True)
         self.target_chk = ctk.CTkCheckBox(self, text="Target", variable=self.is_targeted, width=20, font=("Arial", 11))
-        self.target_chk.pack(pady=(5, 0))
+        self.target_chk.pack(pady=(2, 0))
 
         # アイコンボタン (ここでの右クリックは「電源・管理」)
-        self.icon_btn = ctk.CTkButton(self, text="", image=self.icons["offline"], width=80, height=60, 
+        self.icon_btn = ctk.CTkButton(self, text="", image=self.icons["offline"], width=80, height=btn_height,
                                       fg_color="transparent", hover_color="#37474F")
-        self.icon_btn.pack(pady=2, padx=10)
+        self.icon_btn.pack(pady=1, padx=10)
         
         # 左クリック（離した瞬間）でミュート切り替え
         self.icon_btn.bind("<ButtonRelease-1>", lambda e: self.toggle_mute())
@@ -172,7 +188,7 @@ class ProjectorCard(ctk.CTkFrame):
         # 情報ラベル (受け取った font_size を適用)
         self.label = ctk.CTkLabel(self, text=f"{self.name}\n({self.ip})", 
                                   font=("Arial", font_size, "bold"), justify="center", cursor="hand2")
-        self.label.pack(pady=(0, 5))
+        self.label.pack(pady=(0, 2))
 
         # --- 1. 管理メニュー (アイコン右クリック用) ---
         self.context_menu = tk.Menu(self, tearoff=0, font=("Arial", 14))
@@ -198,10 +214,10 @@ class ProjectorCard(ctk.CTkFrame):
 
         # --- ★マウスバインドの再設定★ ---
         # アイコンを右クリックした時だけ「電源管理メニュー」を出す
-        self.icon_btn.bind("<ButtonRelease-3>", self.show_context_menu)
+        self.icon_btn.bind(_RIGHT_CLICK, self.show_context_menu)
         
         # ラベルを右クリックした時は「入力切替メニュー」を出す
-        self.label.bind("<ButtonRelease-3>", self.show_input_menu)
+        self.label.bind(_RIGHT_CLICK, self.show_input_menu)
         
         # ラベルを左クリックしても入力切替が出るようにしておく
         self.label.bind("<ButtonRelease-1>", self.show_input_menu)
@@ -251,6 +267,8 @@ class ProjectorCard(ctk.CTkFrame):
             if self.delete_cb: self.delete_cb(self)
 
     def _update_ui_states(self):
+        if not self.winfo_exists():  # 破棄済みのカードへの更新を防ぐ
+            return
         if self.is_offline: self.icon_btn.configure(image=self.icons["offline"])
         elif self.power_state == "off": self.icon_btn.configure(image=self.icons["power_off"])
         elif self.is_muted: self.icon_btn.configure(image=self.icons["power_on_muted"])
@@ -405,24 +423,24 @@ class App(ctk.CTk):
         self.tcp_port = 5001
         self.start_remote_listeners()
 
-        # PJアイコン
-        icon_size = (60, 45)
-        self.icons = {
-            "offline": load_or_create_dummy_image("image/icon_offline.png", icon_size),
-            "power_off": load_or_create_dummy_image("image/icon_power_off.png", icon_size),
-            "power_on_muted": load_or_create_dummy_image("image/icon_power_on_muted.png", icon_size),
-            "power_on_projecting": load_or_create_dummy_image("image/icon_power_on_projecting.png", icon_size),
+        # PJアイコン（サイズ別に動的生成するため、Raw PIL Imageとして保持）
+        _icon_files = {
+            "offline":             "image/icon_offline.png",
+            "power_off":           "image/icon_power_off.png",
+            "power_on_muted":      "image/icon_power_on_muted.png",
+            "power_on_projecting": "image/icon_power_on_projecting.png",
         }
+        self._raw_images = {key: load_raw_image(path) for key, path in _icon_files.items()}
 
 
 
 
         # --- UI作成の前に、グリッドサイズの設定を追加 ---
         self.grid_configs = {
-            # ▼ "small" を今回の「間を広げたコンパクト版」にカスタム！
-            "small":  {"width": 80, "height": 130, "font_size": 12, "padding": 10, "col_width": 100},
-            "medium": {"width": 150, "height": 195, "font_size": 14, "padding": 10, "col_width": 170},
-            "large":  {"width": 200, "height": 260, "font_size": 16, "padding": 10, "col_width": 220}
+            #                height = checkbox + btn + label + margin
+            "small":  {"width": 80,  "height": 110, "font_size": 12, "padding": 10, "col_width": 100, "icon_size": (40, 30), "btn_height": 40},
+            "medium": {"width": 150, "height": 130, "font_size": 12, "padding": 10, "col_width": 170, "icon_size": (60, 45), "btn_height": 55},
+            "large":  {"width": 200, "height": 155, "font_size": 12, "padding": 10, "col_width": 220, "icon_size": (90, 68), "btn_height": 80},
         }
         self.current_size = "small"
 
@@ -607,7 +625,7 @@ class App(ctk.CTk):
             
             btn.bind("<ButtonRelease-1>", lambda event, num=i: self.execute_preset(num))
             btn.bind("<Shift-ButtonRelease-1>", lambda event, num=i: self.save_preset(num))
-            btn.bind("<ButtonRelease-3>", lambda e, menu=p_menu: menu.tk_popup(e.x_root, e.y_root))
+            btn.bind(_RIGHT_CLICK, lambda e, menu=p_menu: menu.tk_popup(e.x_root, e.y_root))
             
             self.preset_buttons[str(i)] = btn
 
@@ -666,10 +684,17 @@ class App(ctk.CTk):
         
         for w in bg_widgets:
             if w:  # 存在するパーツにだけバインドする（これでAttributeErrorは絶対に出ません）
-                w.bind("<ButtonRelease-3>", self.show_context_menu) # Windows用
-                w.bind("<ButtonRelease-2>", self.show_context_menu) # Mac用
+                w.bind(_RIGHT_CLICK, self.show_context_menu)         # Windows/macOS/Linux対応
+                w.bind("<ButtonRelease-2>", self.show_context_menu)  # Mac用（中ボタン）
 
 
+
+    def _get_icons(self, size):
+        """指定サイズの CTkImage アイコンセットを返す"""
+        return {
+            key: ctk.CTkImage(light_image=img, dark_image=img, size=size)
+            for key, img in self._raw_images.items()
+        }
 
     def show_all_power_menu(self, event):
         # フォーカス移動はメニューを閉じてしまう原因になるため外します
@@ -970,7 +995,7 @@ class App(ctk.CTk):
         for i, card in enumerate(self.projector_cards):
             card.grid(row=i // self.current_columns, 
                       column=i % self.current_columns, 
-                      padx=8, pady=8, sticky="nsew")
+                      padx=4, pady=4, sticky="nsew")
         
         # 3. ★スクロールエリアの強制更新（これが重要）
         self.scroll_frame.update_idletasks()
@@ -1085,15 +1110,16 @@ class App(ctk.CTk):
         
         # ProjectorCardに動的なサイズを渡すように変更
         card = ProjectorCard(
-            self.scroll_frame, 
-            ip, 
-            name, 
-            icons=self.icons, 
-            rename_cb=self.save_devices, 
+            self.scroll_frame,
+            ip,
+            name,
+            icons=self._get_icons(config["icon_size"]),
+            rename_cb=self.save_devices,
             delete_cb=self.remove_projector,
             width=config["width"],
             height=config["height"],
-            font_size=config["font_size"]
+            font_size=config["font_size"],
+            btn_height=config["btn_height"]
         )
         self.registered_ips.append(ip); self.projector_cards.append(card)
         self.rearrange_grid()
@@ -1472,14 +1498,46 @@ class App(ctk.CTk):
                 json.dump(settings, f, ensure_ascii=False, indent=4)
         except: pass
         
-        # ダイアログで通知（ここも一応現在の言語で分岐）
-        messagebox.showinfo(
-        t_text("msg_restart_title"),
-        t_text("msg_restart_text"),
-        parent=self
-        )
+        # カスタムダイアログで通知
+        self._show_restart_dialog()
         
         self.lang_menu.set(t_text("menu_lang"))
+
+    def _show_restart_dialog(self):
+        """キャンセル / 再起動のカスタムダイアログ"""
+        dialog = ctk.CTkToplevel(self)
+        dialog.title(t_text("msg_restart_title"))
+
+        self.update_idletasks()
+        dw, dh = 320, 140
+        px = self.winfo_rootx() + (self.winfo_width()  - dw) // 2
+        py = self.winfo_rooty() + (self.winfo_height() - dh) // 2
+        dialog.geometry(f"{dw}x{dh}+{px}+{py}")
+
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.after(100, dialog.lift)
+
+        ctk.CTkLabel(dialog, text=t_text("msg_restart_text"), wraplength=280, justify="center").pack(pady=(18, 8), padx=16)
+
+        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(pady=(0, 12))
+        ctk.CTkButton(btn_frame, text=t_text("btn_cancel"),  width=110, fg_color="gray",
+                      command=dialog.destroy).pack(side="left", padx=8)
+        ctk.CTkButton(btn_frame, text=t_text("btn_restart", "再起動"), width=110,
+                      command=lambda: self._do_restart(dialog)).pack(side="left", padx=8)
+
+        dialog.wait_window()
+
+    def _do_restart(self, dialog=None):
+        """アプリを再起動する"""
+        if dialog and dialog.winfo_exists():
+            dialog.destroy()
+        self.save_current_settings()
+        # EXE化時は sys.executable のみ、通常実行時は引数付きで起動
+        args = [sys.executable] if getattr(sys, 'frozen', False) else [sys.executable] + sys.argv
+        self.destroy()
+        os.execv(sys.executable, args)
 
 if __name__ == "__main__":
     app = App()
