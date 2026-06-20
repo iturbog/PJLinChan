@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>PJLinChan_manual.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="pj-linchan-users-manual">PJ LinChan User’s Manual</h1>
+<p>Control Projector via PJlink
+PJLinkの仕組みを使ってプロジェクターを制御するアプリケーションです。</p>
+<h2 id="%E5%90%84%E9%83%A8%E3%81%AE%E8%AA%AC%E6%98%8E%E3%81%A8%E6%A9%9F%E8%83%BD">各部の説明と機能</h2>
+<h3 id="%E7%AE%A1%E7%90%86%E3%83%96%E3%83%AD%E3%83%83%E3%82%AF">管理ブロック</h3>
+<h4 id="%E6%93%8D%E4%BD%9C%E3%83%AD%E3%83%83%E3%82%AF">操作ロック</h4>
+<ul>
+<li>サイドパネル全体のロック、アンロックを切り替え</li>
+</ul>
+<h4 id="ip%E3%82%A2%E3%83%89%E3%83%AC%E3%82%B9%E6%AC%84%E8%BF%BD%E5%8A%A0%E3%83%9C%E3%82%BF%E3%83%B3">IPアドレス欄、追加ボタン</h4>
+<ul>
+<li>IPアドレスを入力
+<ul>
+<li>サブネットは自動入力</li>
+</ul>
+</li>
+<li>[ 追加 ] で IPアドレス欄に入力したプロジェクターを追加<br>
+<ul>
+<li>[ enter ] キーでも確定化<br></li>
+<li>[ esc ] キーが押されるまで連続で入力可</li>
+</ul>
+</li>
+</ul>
+<h4 id="%E6%8E%A2%E6%9F%BB%E3%83%9C%E3%82%BF%E3%83%B3">探査ボタン</h4>
+<ul>
+<li>同一サブネットのプロジェクターを自動追加</li>
+</ul>
+<h4 id="%E6%9B%B4%E6%96%B0%E3%83%9C%E3%82%BF%E3%83%B3">更新ボタン</h4>
+<ul>
+<li>メイン窓のプロジェクターの状態を更新</li>
+</ul>
+<h4 id="%E3%82%B9%E3%83%86%E3%83%BC%E3%82%BF%E3%82%B9%E3%82%A8%E3%83%AA%E3%82%A2">ステータスエリア</h4>
+<ul>
+<li>処理の内容や終了をお知らせ</li>
+</ul>
+<h3 id="%E4%B8%80%E6%8B%AC%E3%83%96%E3%83%AD%E3%83%83%E3%82%AF">一括ブロック</h3>
+<h4 id="power">Power</h4>
+<ul>
+<li>電源の入り</li>
+<li>電源の切り</li>
+</ul>
+<h4 id="mute-on--mute-off">Mute ON / Mute OFF</h4>
+<ul>
+<li>ミュート（シャッター）のオン / オフ</li>
+</ul>
+<h4 id="input-select">Input Select</h4>
+<ul>
+<li>入力ポートの切り替え</li>
+<li>（メーカーによって表記が違うので当てにならない）</li>
+</ul>
+<h3 id="%E6%95%B4%E5%88%97%E3%83%96%E3%83%AD%E3%83%83%E3%82%AF">整列ブロック</h3>
+<h4 id="%E3%82%BD%E3%83%BC%E3%83%88">ソート</h4>
+<p>メイン窓のプロジェクターの並び替え</p>
+<ul>
+<li>IPアドレス順（自動）</li>
+<li>名前順（自動）</li>
+<li>リスト編集（手動）</li>
+</ul>
+<h4 id="%E7%89%B9%E5%88%A5%E3%83%96%E3%83%AD%E3%83%83%E3%82%AF">特別ブロック</h4>
+<p>データ管理</p>
+<ul>
+<li>状態保存</li>
+<li>初期化</li>
+</ul>
+<p>テーマ切り替え</p>
+<ul>
+<li>ライト</li>
+<li>ダーク</li>
+</ul>
+<h3 id="%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%96%E3%83%AD%E3%83%83%E3%82%AF">メインブロック</h3>
+<h4 id="%E3%83%97%E3%83%AD%E3%82%B8%E3%82%A7%E3%82%AF%E3%82%BF%E3%83%BC%E3%82%A2%E3%82%A4%E3%82%B3%E3%83%B3">プロジェクターアイコン</h4>
+<p>状態表示</p>
+<ul>
+<li>Target
+<ul>
+<li>プリセット（後述）登録時の有効無効選択</li>
+</ul>
+</li>
+<li>オフライン</li>
+<li>電源オフ</li>
+<li>電源オン、ミュートオン</li>
+<li>電源オン、ミュートオフ</li>
+</ul>
+<p>アイコンクリック</p>
+<ul>
+<li>ミュートオン、オフ</li>
+</ul>
+<p>アイコン右クリック</p>
+<ul>
+<li>Webアクセス
+<ul>
+<li>ブラウザで開きます</li>
+</ul>
+</li>
+<li>電源オン</li>
+<li>電源オフ</li>
+<li>名前の変更</li>
+<li>削除</li>
+</ul>
+<p>名前クリック</p>
+<ul>
+<li>入力切替</li>
+</ul>
+<h3 id="%E3%83%97%E3%83%AA%E3%82%BB%E3%83%83%E3%83%88%E3%83%96%E3%83%AD%E3%83%83%E3%82%AF">プリセットブロック</h3>
+<p>クリック</p>
+<ul>
+<li>実行（呼び出し）</li>
+</ul>
+<p>[ shift ] + クリック</p>
+<ul>
+<li>登録（状態保存）
+<ul>
+<li>プロジェクターアイコン上の Target 連動</li>
+</ul>
+</li>
+</ul>
+<p>右クリック</p>
+<ul>
+<li>名前の変更</li>
+<li>登録を解除</li>
+</ul>
+<h3 id="%E3%82%AD%E3%83%BC%E3%83%9C%E3%83%BC%E3%83%89%E3%82%A2%E3%82%B5%E3%82%A4%E3%83%B3">キーボードアサイン</h3>
+<ul>
+<li>
+<p>矢印キー ↑ 上	：全台ミュートオフ</p>
+</li>
+<li>
+<p>矢印キー ↓ 下	：全台ミュートオン</p>
+</li>
+<li>
+<p>[ m ] 			：全台ミュートオン / オフ（トグル動作）</p>
+</li>
+<li>
+<p>数字キー [ 1～0 ]	：Preset 1 ～ 10 呼び出し</p>
+</li>
+</ul>
+<h2 id="%E3%81%9D%E3%81%AE%E4%BB%96%E3%81%AE%E6%A9%9F%E8%83%BD">その他の機能</h2>
+<h3 id="udp--tcp-%E8%A2%AB%E3%82%B3%E3%83%B3%E3%83%88%E3%83%AD%E3%83%BC%E3%83%AB">UDP / TCP 被コントロール</h3>
+<p>外部アプリケーションなどからUDP または TCP でコントロール</p>
+<p>ポート</p>
+<ul>
+<li>5000 ( UDP )、5001 ( TCP )</li>
+</ul>
+<p>呼び出し</p>
+<ul>
+<li>Preset：[ preset 1 ] または [ p1 ]</li>
+<li>Mute：[ mute on ] [ mute off ]</li>
+<li>Power：[ all power on ] [ all power off ]</li>
+</ul>
+
+</body>
+</html>
