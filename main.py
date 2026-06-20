@@ -12,7 +12,7 @@ import sys # sysのインポートが必要です
 import platform
 import webbrowser
 
-VERSION = "0.75a"
+VERSION = "0.76a"
 
 # 1. 実行環境に応じたベースディレクトリの取得
 if getattr(sys, 'frozen', False):
@@ -174,7 +174,15 @@ class ProjectorCard(ctk.CTkFrame):
 
         # --- UI配置 ---
         self.is_targeted = ctk.BooleanVar(value=True)
-        self.target_chk = ctk.CTkCheckBox(self, text="Target", variable=self.is_targeted, width=20, font=("Arial", 11))
+        self.target_chk = ctk.CTkCheckBox(
+            self, 
+            text="Target", 
+            variable=self.is_targeted, 
+            checkbox_width=16,
+            checkbox_height=16,
+            width=20,
+            font=("Arial", 10)
+            )
         self.target_chk.pack(pady=(2, 0))
 
         # アイコンボタン (ここでの右クリックは「電源・管理」)

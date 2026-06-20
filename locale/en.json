@@ -8,7 +8,10 @@
     "status_locked": "UI Locked",
     "placeholder_ip": "IP",
     "btn_add": "Add",
-    "btn_scan": { "text": "Scan", "size": 11 },
+    "btn_scan": {
+        "text": "Scan",
+        "size": 11
+    },
     "btn_scan_stop": "Stop",
     "btn_scan_stopping": "Stopping",
     "btn_refresh": "🔄 Refresh",
@@ -36,9 +39,15 @@
     "status_manual_device": "Manual Device",
     "title_manual_sort": "Manual Sort & Add Spacer",
     "prompt_sort": "Rearrange the order using the buttons.",
-    "btn_add_spacer": { "text": "＋ Add Spacer", "size": 11 },
+    "btn_add_spacer": {
+        "text": "＋ Add Spacer",
+        "size": 11
+    },
     "btn_cancel": "Cancel",
-    "btn_apply_save": { "text": "Apply & Save", "size": 11 },
+    "btn_apply_save": {
+        "text": "Apply & Save",
+        "size": 11
+    },
     "title_rename_dialog": "Rename",
     "prompt_new_name": "Enter a new name:",
     "btn_ok": "OK",
@@ -59,9 +68,19 @@
     "status_sort_applied": "Sort Applied",
     "msg_restart_title": "Restart Required",
     "msg_restart_text": "Please restart the app to apply the language settings.",
-    "sort_options": ["IP Order", "Name Order", "Manual..."],
-    "theme_options": ["Light Mode", "Dark Mode"],
-    "data_options": ["Save Manually", "Initialize Data…"],
+    "sort_options": [
+        "IP Order",
+        "Name Order",
+        "Manual..."
+    ],
+    "theme_options": [
+        "Light Mode",
+        "Dark Mode"
+    ],
+    "data_options": [
+        "Save Manually",
+        "Initialize Data…"
+    ],
     "menu_size_small": "Size: Small",
     "menu_size_medium": "Size: Medium",
     "menu_size_large": "Size: Large"
