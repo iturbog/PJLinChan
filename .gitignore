@@ -45,3 +45,4 @@ presets.json
 settings.json
 *.psd
 icon.png
+!*.md
