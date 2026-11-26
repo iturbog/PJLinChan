@@ -7,7 +7,7 @@ Pythonの学習で作りました。多少のことは大目に見てくださ�
 # PJリンちゃん PJLinChan
 Projectores Controller via PJLink
 
-[Manual](https://github.com/iturbog/PJLinChan/blob/main/manual.md)
+[Manual](https://github.com/iturbog/PJLinChan/blob/main/docs/PJLinChan_manual.md)
 
 PJ Link 経由でプロジェクターを操作するアプリケーションです。<br>
 プロジェクターに対する簡単操作しか出来ません。
