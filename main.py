@@ -277,6 +277,12 @@ class ProjectorCard(ctk.CTkFrame):
     def _update_ui_states(self):
         if not self.winfo_exists():  # 破棄済みのカードへの更新を防ぐ
             return
+        # オフライン時のみ、シャッター開(ミュート解除)を黄色枠で示す（プリセット作成用）
+        if self.is_offline and not self.is_muted:
+            self.icon_btn.configure(border_width=2, border_color="#FFC107")
+        else:
+            self.icon_btn.configure(border_width=0)
+
         if self.is_offline: self.icon_btn.configure(image=self.icons["offline"])
         elif self.power_state == "off": self.icon_btn.configure(image=self.icons["power_off"])
         elif self.is_muted: self.icon_btn.configure(image=self.icons["power_on_muted"])
@@ -323,7 +329,8 @@ class ProjectorCard(ctk.CTkFrame):
         threading.Thread(target=self._send_pjlink_command, args=("power", state), daemon=True).start()
 
     def toggle_mute(self):
-        if not self.is_offline and self.power_state == "on":
+        # オフライン時も状態だけは切り替え可能（実機なしでプリセットを作れるように）
+        if self.is_offline or self.power_state == "on":
             self.set_mute_state(not self.is_muted)
 
     def control_power(self, choice):
@@ -798,7 +805,8 @@ class App(ctk.CTk):
             source_type, source_num = mapping[choice]
             for card in self.projector_cards:
                 # if card.is_targeted.get(): ← これを削除！
-                card.set_input_source(source_type, source_num)
+                if card.ip != "spacer":
+                    card.set_input_source(source_type, source_num)
         
         # 選択後に表示をリセット
         self.all_input_menu.set("Input Select")
@@ -901,7 +909,8 @@ class App(ctk.CTk):
         num_str = str(num)
         # ターゲットにチェックが入っているカードの情報を集める
         p_data = {card.ip: {"mute": card.is_muted} 
-                  for card in self.projector_cards if card.is_targeted.get()}
+                  for card in self.projector_cards
+                  if card.ip != "spacer" and card.is_targeted.get()}
         
         if not p_data:
             messagebox.showwarning(t_text("title_fail"), t_text("msg_fail_target"))
