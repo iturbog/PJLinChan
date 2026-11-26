@@ -634,6 +634,12 @@ class App(ctk.CTk):
         # リサイズが落ち着いてから幅と列数をまとめて反映する（30台規模でのカクつき対策）
         self.scroll_frame._parent_canvas.bind("<Configure>", self.on_frame_resize)
 
+        # Linux(X11 / Tk 8.6) のホイールは <Button-4>/<Button-5> で届くが、
+        # CustomTkinter 5.2.2 は <MouseWheel> しか拾わないため自前で対応する
+        if platform.system() == "Linux":
+            self.bind_all("<Button-4>", lambda e: self._linux_wheel_scroll(e, -1), add="+")
+            self.bind_all("<Button-5>", lambda e: self._linux_wheel_scroll(e, 1), add="+")
+
         # -----------------------------------
         # 3. プリセットエリア (下部 5x2配置)
         # -----------------------------------
@@ -1100,6 +1106,17 @@ class App(ctk.CTk):
                 continue
             # カードは固定サイズのまま中央寄せ（伸縮させると全カードが毎回再描画されて重い）
             card.grid(row=row, column=col, padx=4, pady=4, sticky="n")
+
+    def _linux_wheel_scroll(self, event, direction):
+        """Linux用: マウスがプロジェクター一覧の上にあるときだけ縦スクロール"""
+        sf = self.scroll_frame
+        try:
+            if not sf.check_if_master_is_canvas(event.widget):
+                return
+        except Exception:
+            return  # メニュー等、通常のウィジェット以外からのイベント
+        if sf._parent_canvas.yview() != (0.0, 1.0):
+            sf._parent_canvas.yview("scroll", direction, "units")
 
     # --- 自動リサイズ処理 ---
     def on_frame_resize(self, event):
