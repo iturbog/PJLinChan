@@ -29,21 +29,28 @@ def main():
     os.chdir(ROOT)
     version = read_version()
     name = f"PJLinChan_v{version}"
-    icon = os.path.join("image", "icon.icns" if sys.platform == "darwin" else "icon.ico")
-
-    print(f"=== Building {name} ===")
-    PyInstaller.__main__.run([
+    args = [
         "main.py",
         "--noconfirm",
         "--clean",
         "--onefile",
         "--windowed",
         "--name", name,
-        "--icon", icon,
         "--add-data", f"image{SEP}image",
         "--add-data", f"locale{SEP}locale",
         "--collect-all", "customtkinter",
-    ])
+        # Linux では PIL.ImageTk が内部で使うこのモジュールが自動検出されず、画像表示で失敗する
+        "--hidden-import", "PIL._tkinter_finder",
+    ]
+
+    # 実行ファイルのアイコンは Windows(.ico) / macOS(.icns) のみ対応
+    if sys.platform == "darwin":
+        args += ["--icon", os.path.join("image", "icon.icns")]
+    elif os.name == "nt":
+        args += ["--icon", os.path.join("image", "icon.ico")]
+
+    print(f"=== Building {name} ===")
+    PyInstaller.__main__.run(args)
     print(f"=== Done: dist/{name}{'.exe' if os.name == 'nt' else ''} ===")
 
 

@@ -19,6 +19,8 @@ PRESET_COUNT_CHOICES = [5, 10, 15, 20]
 DEFAULT_PRESET_COUNT = 10
 # プリセット11-20に割り当てるキー（数字キーの1段下）
 PRESET_LETTER_KEYS = list("qwertyuiop")
+# ウインドウのリサイズが止まってからカード配置を更新するまでの待ち時間(ms)
+RESIZE_DEBOUNCE_MS = 100
 
 # 1. 実行環境に応じたベースディレクトリの取得
 if getattr(sys, 'frozen', False):
@@ -625,8 +627,12 @@ class App(ctk.CTk):
         self.scroll_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
         
         # ▼ 変更点: 固定の4列設定を削除し、初期列数とリサイズ検知を追加
-        self.current_columns = 4 
-        self.scroll_frame.bind("<Configure>", self.on_frame_resize)
+        self.current_columns = 4
+        self._weighted_columns = 0
+        self._resize_after_id = None
+        # CustomTkinter標準の「キャンバス幅が1px変わるたびに内側フレームを追従させる」処理を置き換え、
+        # リサイズが落ち着いてから幅と列数をまとめて反映する（30台規模でのカクつき対策）
+        self.scroll_frame._parent_canvas.bind("<Configure>", self.on_frame_resize)
 
         # -----------------------------------
         # 3. プリセットエリア (下部 5x2配置)
@@ -759,14 +765,8 @@ class App(ctk.CTk):
         # 5. 現在のウィンドウ幅に合わせて列数を再計算
         current_width = self.scroll_frame.winfo_width()
         self.current_columns = max(1, current_width // config["col_width"])
-        
-        # 列数のグリッドウェイトをリセットして再設定
-        for i in range(20):
-            self.scroll_frame.grid_columnconfigure(i, weight=0)
-        for i in range(self.current_columns):
-            self.scroll_frame.grid_columnconfigure(i, weight=1)
 
-        # 再配置を実行
+        # 再配置を実行（列のウェイトも rearrange_grid 内で更新）
         self.rearrange_grid()
 
 
@@ -1085,38 +1085,41 @@ class App(ctk.CTk):
             json.dump(self.presets_data, f, ensure_ascii=False, indent=4)
 
     def rearrange_grid(self):
-        # 1. 配置を一旦クリア
-        for card in self.projector_cards:
-            card.grid_forget()
-        
-        # 2. 新しい列数で再配置
+        """現在の列数でカードを配置（位置が変わったカードだけ動かす）"""
+        cols = self.current_columns
+
+        # 列の均等割りを列数に合わせて更新（前回より多かった分は解除）
+        for i in range(max(cols, self._weighted_columns)):
+            self.scroll_frame.grid_columnconfigure(i, weight=1 if i < cols else 0)
+        self._weighted_columns = cols
+
         for i, card in enumerate(self.projector_cards):
-            card.grid(row=i // self.current_columns, 
-                      column=i % self.current_columns, 
-                      padx=4, pady=4, sticky="nsew")
-        
-        # 3. ★スクロールエリアの強制更新（これが重要）
-        self.scroll_frame.update_idletasks()
-        # 内部フレームのサイズを再計算させる「おまじない」
-        self.scroll_frame._parent_canvas.configure(scrollregion=self.scroll_frame._parent_canvas.bbox("all"))
-            
-   # --- 自動リサイズ処理 ---
+            row, col = i // cols, i % cols
+            info = card.grid_info()
+            if info and int(info["row"]) == row and int(info["column"]) == col:
+                continue
+            # カードは固定サイズのまま中央寄せ（伸縮させると全カードが毎回再描画されて重い）
+            card.grid(row=row, column=col, padx=4, pady=4, sticky="n")
+
+    # --- 自動リサイズ処理 ---
     def on_frame_resize(self, event):
-        # 現在のサイズに応じた列幅を取得して計算
+        """リサイズが落ち着いてから列数を再計算する（ドラッグ中の再配置を防ぐ）"""
+        if self._resize_after_id:
+            self.after_cancel(self._resize_after_id)
+        self._resize_after_id = self.after(RESIZE_DEBOUNCE_MS, self._apply_resize, event.width)
+
+    def _apply_resize(self, width):
+        self._resize_after_id = None
+        # 内側フレームの幅をキャンバスに合わせる（本来CTkが毎回行う処理をここで1回だけ）
+        sf = self.scroll_frame
+        sf._parent_canvas.itemconfigure(sf._create_window_id, width=width)
+
         config = self.grid_configs[self.current_size]
-        new_columns = max(1, event.width // config["col_width"])
-        
+        new_columns = max(1, width // config["col_width"])
+
         # 列数が変わった時だけ再配置を実行する
         if self.current_columns != new_columns:
             self.current_columns = new_columns
-            
-            # 古い列の幅設定を一旦リセット
-            for i in range(20):
-                self.scroll_frame.grid_columnconfigure(i, weight=0)
-            # 新しい列数で均等割りを再設定
-            for i in range(self.current_columns):
-                self.scroll_frame.grid_columnconfigure(i, weight=1)
-                
             self.rearrange_grid()
 
     def handle_manage_menu(self, choice):
@@ -1272,7 +1275,10 @@ class App(ctk.CTk):
                             self.add_projector(dev["ip"], dev["name"], save=False)
                 # 全て読み込んだ後に再配置を呼ぶ
                 self.rearrange_grid()
-            except: pass
+            except Exception:
+                # 黙って失敗すると原因が分からないため、ターミナルに出力する
+                import traceback
+                traceback.print_exc()
 
     def save_devices(self):
         # SpacerCardかProjectorCardかを判定して保存
