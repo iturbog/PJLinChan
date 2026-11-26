@@ -23,7 +23,7 @@
     "menu_data": "Data",
     "menu_theme": "Theme",
     "menu_lang": "Language",
-    "label_presets": "PRESETS (1-5 / 6-0):",
+    "label_presets": "PRESETS",
     "label_spacer": "(Blank)",
     "menu_delete_spacer": "❌ Delete this blank",
     "menu_web_access": "🌐 Web Access",
@@ -79,8 +79,19 @@
     ],
     "data_options": [
         "Save Manually",
-        "Initialize Data…"
+        "Initialize Data…",
+        "Preset Count…"
     ],
+    "menu_target": "Target",
+    "target_options": [
+        "All ON",
+        "All OFF",
+        "Invert"
+    ],
+    "status_target_changed": "Targets updated",
+    "title_preset_count": "Preset Count",
+    "prompt_preset_count": "Select the number of presets to show:",
+    "status_preset_count": "Preset count set to {count}",
     "menu_size_small": "Size: Small",
     "menu_size_medium": "Size: Medium",
     "menu_size_large": "Size: Large"

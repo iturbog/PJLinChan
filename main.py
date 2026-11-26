@@ -12,7 +12,13 @@ import sys # sysのインポートが必要です
 import platform
 import webbrowser
 
-VERSION = "0.76a"
+VERSION = "0.77a"
+
+# プリセット数の選択肢とデフォルト値（settings.json の "preset_count" に記録）
+PRESET_COUNT_CHOICES = [5, 10, 15, 20]
+DEFAULT_PRESET_COUNT = 10
+# プリセット11-20に割り当てるキー（数字キーの1段下）
+PRESET_LETTER_KEYS = list("qwertyuiop")
 
 # 1. 実行環境に応じたベースディレクトリの取得
 if getattr(sys, 'frozen', False):
@@ -579,7 +585,7 @@ class App(ctk.CTk):
         ctk.CTkLabel(self.sidebar, text=t_text("title_special"), font=("Arial", 14, "bold")).grid(row=14, column=0, padx=5, pady=(5, 0))
         self.manage_menu = ctk.CTkOptionMenu(
             self.sidebar, 
-            values=_translations.get("data_options", ["Save Manually", "Initialize Data…"]), 
+            values=_translations.get("data_options", ["Save Manually", "Initialize Data…", "Preset Count…"]),
             height=sb_h,
             command=self.handle_manage_menu
         )
@@ -595,12 +601,22 @@ class App(ctk.CTk):
         self.theme_menu.set(t_text("menu_theme"))
         self.theme_menu.grid(row=16, column=0, padx=10, pady=(0, 10), sticky="ew")
 
+        # ターゲット一括切り替えメニュー（全ON / 全OFF / 反転）
+        self.target_menu = ctk.CTkOptionMenu(
+            self.sidebar,
+            values=_translations.get("target_options", ["All ON", "All OFF", "Invert"]),
+            height=sb_h,
+            command=self.handle_target_menu
+        )
+        self.target_menu.set(t_text("menu_target"))
+        self.target_menu.grid(row=17, column=0, padx=10, pady=(0, 10), sticky="ew")
+
         # 言語切り替えメニュー
-        self.lang_menu = ctk.CTkOptionMenu(self.sidebar, values=["日本語", "English"], 
+        self.lang_menu = ctk.CTkOptionMenu(self.sidebar, values=["日本語", "English"],
             height=sb_h,
             command=self.change_language_setting)
         self.lang_menu.set(t_text("menu_lang"))
-        self.lang_menu.grid(row=17, column=0, padx=10, pady=(0, 10), sticky="ew")
+        self.lang_menu.grid(row=18, column=0, padx=10, pady=(0, 10), sticky="ew")
 
         # -----------------------------------
         # 2. メインエリア
@@ -624,31 +640,15 @@ class App(ctk.CTk):
         ctk.CTkLabel(self.preset_frame, text=t_text("label_presets"), font=("Arial", 12, "bold")).grid(row=0, column=0, columnspan=5, pady=2)
 
         self.preset_buttons = {}
-        self.presets_data = {} 
-
-        for i in range(1, 11):
-            row_idx = (i - 1) // 5 + 1
-            col_idx = (i - 1) % 5
-            
-            p_menu = tk.Menu(self, tearoff=0, font=("Arial", 14))
-            p_menu.add_command(label=t_text("menu_rename"), command=lambda num=i: self.rename_preset(num))
-            p_menu.add_command(label=t_text("menu_delete"), command=lambda num=i: self.clear_preset(num))
-            
-            # ボタン作成は1回だけ！
-            btn = ctk.CTkButton(self.preset_frame, text=f"Preset {i}", height=35, fg_color="transparent", border_width=1)
-            btn.grid(row=row_idx, column=col_idx, padx=5, pady=2, sticky="ew")
-            
-            btn.bind("<ButtonRelease-1>", lambda event, num=i: self.execute_preset(num))
-            btn.bind("<Shift-ButtonRelease-1>", lambda event, num=i: self.save_preset(num))
-            btn.bind(_RIGHT_CLICK, lambda e, menu=p_menu: menu.tk_popup(e.x_root, e.y_root))
-            
-            self.preset_buttons[str(i)] = btn
+        self.presets_data = {}
+        self.preset_count = DEFAULT_PRESET_COUNT
 
         self.registered_ips = []
         self.projector_cards = []
         self.global_mute_state = False
 
-        self.load_settings() # 起動時にテーマ設定を読み込む
+        self.load_settings() # 起動時にテーマ設定・プリセット数を読み込む
+        self._build_preset_buttons()
         self.load_devices()
         self.load_presets()
 
@@ -666,7 +666,8 @@ class App(ctk.CTk):
         self.sidebar_elements = [
             self.ip_entry, self.scan_btn, self.refresh_all_btn,
             self.btn_mute_on, self.btn_mute_off,
-            self.all_input_menu, self.sort_menu, self.manage_menu, self.theme_menu
+            self.all_input_menu, self.sort_menu, self.manage_menu, self.theme_menu,
+            self.target_menu
         ]
         
         for element in self.sidebar_elements:
@@ -841,6 +842,9 @@ class App(ctk.CTk):
                     s = json.load(f)
                     theme = s.get("theme", "Light") # "Dark" または "Light" を取得
                     last_prefix = s.get("last_prefix", last_prefix)
+                    count = s.get("preset_count", DEFAULT_PRESET_COUNT)
+                    if count in PRESET_COUNT_CHOICES:
+                        self.preset_count = count
                     geo = s.get("geometry")
                     if geo: self.geometry(geo)
             except: pass
@@ -867,7 +871,8 @@ class App(ctk.CTk):
             "theme": theme_choice,     # ここに "Dark" または "Light" が綺麗に入ります
             "geometry": self.geometry(),
             "last_prefix": prefix,
-            "lang": _current_lang      # 前回のグローバル変数化もここに適用！
+            "lang": _current_lang,     # 前回のグローバル変数化もここに適用！
+            "preset_count": self.preset_count
         }
         try:
             with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
@@ -933,8 +938,84 @@ class App(ctk.CTk):
         print(f"DEBUG: Preset {num} saved with {len(p_data)} devices.")
         self.status_label.configure(text=f"Preset {num} を登録/上書きしました")
 
+    def _build_preset_buttons(self):
+        """現在の preset_count に合わせてプリセットボタンを作り直す（5列×n行）"""
+        for btn in self.preset_buttons.values():
+            btn.destroy()
+        self.preset_buttons = {}
+
+        for i in range(1, self.preset_count + 1):
+            row_idx = (i - 1) // 5 + 1
+            col_idx = (i - 1) % 5
+
+            p_menu = tk.Menu(self, tearoff=0, font=("Arial", 14))
+            p_menu.add_command(label=t_text("menu_rename"), command=lambda num=i: self.rename_preset(num))
+            p_menu.add_command(label=t_text("menu_delete"), command=lambda num=i: self.clear_preset(num))
+
+            btn = ctk.CTkButton(self.preset_frame, text=f"Preset {i}", height=35, fg_color="transparent", border_width=1)
+            btn.grid(row=row_idx, column=col_idx, padx=5, pady=2, sticky="ew")
+
+            btn.bind("<ButtonRelease-1>", lambda event, num=i: self.execute_preset(num))
+            btn.bind("<Shift-ButtonRelease-1>", lambda event, num=i: self.save_preset(num))
+            btn.bind(_RIGHT_CLICK, lambda e, menu=p_menu: menu.tk_popup(e.x_root, e.y_root))
+
+            self.preset_buttons[str(i)] = btn
+
+        # 登録済みプリセットの色・名前を反映（範囲外のデータは消さずに保持）
+        for num_str in self.presets_data.keys():
+            self._update_preset_button_ui(num_str)
+
+    def set_preset_count(self, count):
+        """プリセット数を変更して即時反映・保存"""
+        if count not in PRESET_COUNT_CHOICES or count == self.preset_count:
+            return
+        self.preset_count = count
+        self._build_preset_buttons()
+        self.save_current_settings()
+        self.status_label.configure(text=t_text("status_preset_count").format(count=count))
+
+    def open_preset_count_dialog(self):
+        """プリセット数を [5, 10, 15, 20] から選ぶダイアログ"""
+        dialog = ctk.CTkToplevel(self)
+        dialog.title(t_text("title_preset_count"))
+
+        self.update_idletasks()
+        dw, dh = 320, 150
+        px = self.winfo_rootx() + (self.winfo_width()  - dw) // 2
+        py = self.winfo_rooty() + (self.winfo_height() - dh) // 2
+        dialog.geometry(f"{dw}x{dh}+{px}+{py}")
+        dialog.resizable(False, False)
+
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.after(100, dialog.lift)
+
+        ctk.CTkLabel(dialog, text=t_text("prompt_preset_count")).pack(pady=(16, 8), padx=16)
+
+        seg = ctk.CTkSegmentedButton(dialog, values=[str(n) for n in PRESET_COUNT_CHOICES], width=260)
+        seg.set(str(self.preset_count))
+        seg.pack(pady=(0, 12))
+
+        def on_ok():
+            count = int(seg.get())
+            dialog.destroy()
+            self.set_preset_count(count)
+
+        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(pady=(0, 12))
+        ctk.CTkButton(btn_frame, text=t_text("btn_cancel"), width=110, fg_color="gray",
+                      command=dialog.destroy).pack(side="left", padx=8)
+        ctk.CTkButton(btn_frame, text=t_text("btn_ok"), width=110,
+                      command=on_ok).pack(side="left", padx=8)
+
+        dialog.bind("<Return>", lambda e: on_ok())
+        dialog.bind("<Escape>", lambda e: dialog.destroy())
+        dialog.wait_window()
+
     def execute_preset(self, num):
         """プリセット実行と、ボタンの視覚的フィードバック"""
+        if num > self.preset_count:
+            return  # 非表示のプリセットは実行しない
         print(f"🚀 Executing Preset {num}...")
         
         # --- 1. ボタンを光らせる演出 ---
@@ -1042,7 +1123,7 @@ class App(ctk.CTk):
         self.focus_set()
         
         # 言語ファイル（JSON）から選択肢のリストを丸ごと取得
-        options = _translations.get("data_options", ["Save Manually", "Initialize Data…"])
+        options = _translations.get("data_options", ["Save Manually", "Initialize Data…", "Preset Count…"])
         
         # -----------------------------------------------
         # 1. 「手動で保存」 (0番目) が選ばれた場合
@@ -1069,7 +1150,7 @@ class App(ctk.CTk):
                 self.registered_ips.clear()
                 
                 self.presets_data.clear()
-                for i in range(1, 11):
+                for i in range(1, self.preset_count + 1):
                     self._update_preset_button_ui(str(i))
                 
                 if os.path.exists(CONFIG_FILE): os.remove(CONFIG_FILE)
@@ -1085,9 +1166,32 @@ class App(ctk.CTk):
                 self.status_label.configure(text=t_text("status_initialized"))
 
         # -----------------------------------------------
+        # 3. 「プリセット数…」 (2番目) が選ばれた場合
+        # -----------------------------------------------
+        elif len(options) > 2 and choice == options[2]:
+            self.manage_menu.set(t_text("menu_data"))
+            self.open_preset_count_dialog()
+
+        # -----------------------------------------------
         # 3. メニューの表示を元の「データ」という文字に戻す
         # -----------------------------------------------
         self.manage_menu.set(t_text("menu_data"))
+
+    def handle_target_menu(self, choice):
+        """ターゲットの全ON / 全OFF / 反転（空白カードは対象外）"""
+        self.focus_set()
+        options = _translations.get("target_options", ["All ON", "All OFF", "Invert"])
+        cards = [c for c in self.projector_cards if c.ip != "spacer"]
+
+        if choice == options[0]:
+            for c in cards: c.is_targeted.set(True)
+        elif choice == options[1]:
+            for c in cards: c.is_targeted.set(False)
+        elif choice == options[2]:
+            for c in cards: c.is_targeted.set(not c.is_targeted.get())
+
+        self.status_label.configure(text=t_text("status_target_changed"))
+        self.target_menu.set(t_text("menu_target"))
 
     # ▼ 追加：終了時に呼ばれる関数
     def on_closing(self):
@@ -1098,12 +1202,19 @@ class App(ctk.CTk):
         if str(self.focus_get()).find("entry") != -1: return
         char = event.char.lower() if event.char else ""
         
-        # 1-9キーでプリセット1-9実行、0キーでプリセット10を実行
+        # 文字キーは keysym で判定（Caps Lock 等の影響を受けにくくする）
+        key = event.keysym.lower() if event.keysym else ""
+
+        # 1-9キーでプリセット1-9実行、0キーでプリセット10を実行（テンキー対応のため char で判定）
         if char in [str(n) for n in range(1, 10)]:
             self.execute_preset(int(char))
         elif char == '0':
             self.execute_preset(10)
-            
+
+        # Q-Pキーでプリセット11-20を実行（数字キーの1段下）
+        elif key in PRESET_LETTER_KEYS and not (event.state & 0x4):  # Ctrl併用時は無視
+            self.execute_preset(11 + PRESET_LETTER_KEYS.index(key))
+
         elif char == 'm': 
             self.global_mute_state = not self.global_mute_state
             self.control_all_mute(self.global_mute_state)
@@ -1407,7 +1518,7 @@ class App(ctk.CTk):
                 num_str = cmd.replace("preset", "").replace("p", "").strip()
                 if num_str.isdigit():
                     num = int(num_str)
-                    if 1 <= num <= 10:
+                    if 1 <= num <= self.preset_count:
                         self.after(0, lambda n=num: self.execute_preset(n))
 
             # 一括ミュート (例: "mute on", "mute off")

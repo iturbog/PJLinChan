@@ -23,7 +23,7 @@
     "menu_data": "データ",
     "menu_theme": "テーマ",
     "menu_lang": "言語",
-    "label_presets": "プリセット (1-5 / 6-0):",
+    "label_presets": "プリセット",
     "label_spacer": "（空白）",
     "menu_delete_spacer": "❌ この空白を削除",
     "menu_web_access": "🌐 Webアクセス",
@@ -73,8 +73,19 @@
     ],
     "data_options": [
         "手動で保存",
-        "データ初期化…"
+        "データ初期化…",
+        "プリセット数…"
     ],
+    "menu_target": "ターゲット",
+    "target_options": [
+        "全てON",
+        "全てOFF",
+        "反転"
+    ],
+    "status_target_changed": "ターゲットを変更しました",
+    "title_preset_count": "プリセット数",
+    "prompt_preset_count": "表示するプリセットの数を選択してください:",
+    "status_preset_count": "プリセット数を {count} に変更しました",
     "menu_size_small": "サイズ：小",
     "menu_size_medium": "サイズ：中",
     "menu_size_large": "サイズ：大"
