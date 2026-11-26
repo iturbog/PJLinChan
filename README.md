@@ -2,7 +2,7 @@
 Pythonの学習で作りました。多少のことは大目に見てください。<br>
 
 [⇨ リリース/Releases](https://github.com/iturbog/PJLinChan/releases)<br>
-[⇨ 簡易マニュアル](https://github.com/iturbog/PJLinChan/blob/main/docs/PJLinChan_manual.html)
+[⇨ 簡易マニュアル](https://github.com/iturbog/PJLinChan/blob/main/docs/PJLinChan_manual.md)
 
 # PJリンちゃん PJLinChan
 Projectores Controller via PJLink
