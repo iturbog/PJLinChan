@@ -673,6 +673,10 @@ class App(ctk.CTk):
         
         # ウィンドウを閉じるボタンが押された時の動作を指定
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        # IP入力欄以外のどこかをクリックしたら入力欄のフォーカスを外す
+        # （空白部分のクリックでもキーボード操作に戻れるように）
+        self.bind_all("<Button-1>", self._release_entry_focus, add="+")
         
         # ロック対象のウィジェット
         self.sidebar_elements = [
@@ -1106,6 +1110,19 @@ class App(ctk.CTk):
                 continue
             # カードは固定サイズのまま中央寄せ（伸縮させると全カードが毎回再描画されて重い）
             card.grid(row=row, column=col, padx=4, pady=4, sticky="n")
+
+    def _release_entry_focus(self, event):
+        """IP入力欄にフォーカスがある状態で、入力欄の外がクリックされたらフォーカスを外す"""
+        entry_path = str(self.ip_entry)
+        is_entry = lambda w: str(w) == entry_path or str(w).startswith(entry_path + ".")
+        try:
+            if not is_entry(self.focus_get()):
+                return  # 入力欄にフォーカスが無い（ダイアログ等）ときは何もしない
+        except Exception:
+            return
+        if isinstance(event.widget, str) or is_entry(event.widget):
+            return  # 入力欄自身のクリック（カーソル移動・範囲選択）はそのまま
+        self.focus_set()
 
     def _linux_wheel_scroll(self, event, direction):
         """Linux用: マウスがプロジェクター一覧の上にあるときだけ縦スクロール"""
